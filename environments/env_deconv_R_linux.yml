@@ -1,0 +1,29 @@
+name: env_deconv_R
+channels:                 # keep this exact order
+  - conda-forge
+  - bioconda
+  - defaults
+
+dependencies:
+  # ── core R runtime ─────────────────────────────────────────────
+  - r-base=4.3
+  - libblas=*=*openblas      # avoids MKL / OpenBLAS mix-ups
+  - r-rcpparmadillo 
+  # ── CRAN pkgs available on conda-forge ─────────────────────────
+  - r-data.table
+  - r-dplyr
+  - r-here
+  - r-readxl
+  - r-caret
+  - r-cluster
+  - r-nmf
+  - r-seurat                # Seurat 5.0 is on conda-forge
+  # ── Bioconductor pkgs on Bioconda ─────────────────────────────
+  - bioconductor-biobase
+  - bioconductor-curatedovariandata   # ✔ available :contentReference[oaicite:0]{index=0}
+  - bioconductor-consensusov          # 1.24.0 is the latest on Bioconda :contentReference[oaicite:1]{index=1}
+  - bioconductor-scuttle
+  # ── system libs that some R pkgs need ─────────────────────────
+  - curl
+  - libxml2
+  - openssl

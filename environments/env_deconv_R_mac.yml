@@ -1,0 +1,29 @@
+name: env_deconv_R
+channels:
+  - conda-forge          # put first so its builds win
+  - bioconda
+  - defaults
+
+dependencies:
+  # ── core R -----------------------------------------------------------------
+  - r-base=4.4           # satisfies bioconductor-scuttle
+  - libblas=*=*openblas  # avoid MKL/OpenBLAS mix-ups
+  - r-rcpparmadillo  
+  # ── CRAN packages with native osx-arm64 builds -----------------------------
+  - r-data.table
+  - r-dplyr
+  - r-here
+  - r-readxl
+  - r-caret
+  - r-cluster
+  - r-seurat            # conda-forge has Seurat 5.x for arm64
+
+  # ── Bioconductor packages that already exist -------------------------------
+  - bioconductor-biobase
+  - bioconductor-curatedovariandata
+  - bioconductor-scuttle
+
+  # ── system libs some R pkgs need -------------------------------------------
+  - curl
+  - libxml2
+  - openssl
