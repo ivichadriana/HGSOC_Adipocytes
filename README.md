@@ -2,30 +2,6 @@
 
 **Deconvolution of bulk RNA-seq of High Grade Serous Ovarian Carcinoma (HGSOC) incorporating adipocytes for survival analysis**
 
-## Table of Contents
-
-- [Introduction](#introduction)
-- [Features](#features)
-- [Directory Structure](#directory-structure)
-- [Installation](#installation)
-- [Data Preparation](#data-preparation)
-- [Workflow Overview](#workflow-overview)
-- [Script Descriptions](#script-descriptions)
-  - [unzip\_input\_data.py](#unzip_input_datapy)
-  - [1\_process\_data\_and\_subtypes.R](#1_process_data_and_subtypesr)
-  - [2\_prepare\_deconvolution.R](#2_prepare_deconvolutionr)
-  - [3\_run\_deconvolution.R](#3_run_deconvolutionr)
-- [Notebooks](#notebooks)
-- [Environment](#environment)
-- [Dependencies](#dependencies)
-- [Results](#results)
-- [Contributing](#contributing)
-- [License](#license)
-- [References](#references)
-- [Contact](#contact)
-
-## Introduction
-
 High Grade Serous Ovarian Carcinoma (HGSOC) is characterized by heterogeneity at the cellular level. Deconvolution methods can estimate cell-type composition from bulk RNA-seq data using single-cell references. However, adipocytes are often underrepresented in single-cell RNA-seq. This project integrates single-nucleus RNA-seq adipocyte data with HGSOC single-cell references and applies [InstaPrism](https://github.com/humengying0907/InstaPrism) for deconvolution of bulk RNA-seq and microarray datasets from Black and White patient cohorts: “SchildkrautB” and “SchildkrautW”.
 
 ## Features
