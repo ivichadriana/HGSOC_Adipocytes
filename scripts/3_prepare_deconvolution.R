@@ -38,6 +38,8 @@ library(data.table)
 library(scuttle)
 library(here)
 library(Seurat)
+library(SingleCellExperiment)   # miQC expects an SCE object
+library(miQC)                   # ≥ v1.1.0
 
 # Set base directories
 # Be sure to open this script along with a corresponding project
@@ -151,6 +153,46 @@ for (n in c(seq.int(1,8))) {
   assign(paste0("rep",n,"_sc_overlap_cells_labeled"),
          filter(get(paste0("rep",n,"_sc_labels")),
                 get(paste0("rep",n,"_sc_labels"))[,1] %in% get(paste0("rep",n,"_sc_overlap_cells"))))
+}
+
+## ---------------------------------------------------------------
+## 1b) miQC filtering (Hippen et al. Genome Biol 2023)
+##     – removes cells with high %MT and/or low gene complexity
+## ---------------------------------------------------------------
+mito_regex <- "^MT-"            # customise if your gene naming differs
+
+for (n in seq_len(8)) {
+  message(sprintf("Running miQC on scRNA‑seq rep %d …", n))
+
+  # current matrix and its barcodes
+  mat <- get(paste0("rep", n, "_sc_matrix_subset"))
+
+  # build an SCE object and attach QC metrics
+  sce <- SingleCellExperiment(assays = list(counts = mat))
+  sce <- scuttle::addPerCellQC(
+           sce,
+           subsets = list(Mt = grepl(mito_regex, rownames(sce)))
+         )
+
+  # fit mixture model & classify low‑quality cells
+  model  <- mixtureModel(sce)
+  sce_f  <- filterCells(
+              sce,
+              model            = model,
+              posterior_cutoff = 0.75,   # same threshold as Hippen et al.
+              verbose          = TRUE
+            )
+
+  keep_barcodes <- colnames(sce_f)                     # high‑quality cells
+
+  ## ── propagate filtering ───────────────────────────────
+  # expression matrix
+  assign(paste0("rep", n, "_sc_matrix_subset"), mat[, keep_barcodes])
+
+  # corresponding label table
+  lab_tbl <- get(paste0("rep", n, "_sc_overlap_cells_labeled"))
+  lab_tbl <- lab_tbl[lab_tbl$Barcode %in% keep_barcodes, ]
+  assign(paste0("rep", n, "_sc_overlap_cells_labeled"), lab_tbl)
 }
 
 # Removing the sc_labels from R's memory to save space

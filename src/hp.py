@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
+from lifelines import KaplanMeierFitter
 
 def ungzip_file(gzip_path, dest_path):
     with gzip.open(gzip_path, 'rb') as f_in, open(dest_path, 'wb') as f_out:
@@ -139,3 +140,31 @@ def open_and_clean_meta(meta_path,  renaming, tissue_dictionary):
     meta_full.drop(columns=["Debulk", "NeoTx"], inplace=True)
 
     return meta_full
+
+
+def plot_km(has_info, missing_info, title, duration_col, event_col):
+
+    # Initialize Kaplan-Meier fitter
+    kmf = KaplanMeierFitter()
+
+    plt.figure(figsize=(14, 12))
+
+    # Plot: patients with treatment info
+    kmf.fit(durations=has_info[duration_col], event_observed=has_info[event_col], label="Treatment Info Present")
+    kmf.plot_survival_function()
+
+    # Plot: patients missing all treatment info
+    kmf.fit(durations=missing_info[duration_col], event_observed=missing_info[event_col], label="All Treatment Info Missing")
+    kmf.plot_survival_function()
+
+    # Customize plot
+    plt.title(title, fontsize=35, fontweight="bold")
+    plt.yticks(fontsize=30)
+    plt.xticks(fontsize=30)
+    plt.xlabel("Time (Days)", fontsize=30)
+    plt.ylabel("Survival Probability", fontsize=30)
+    plt.grid(True)
+    plt.ylim(0,1)
+    plt.legend(fontsize=30, markerscale=2)
+    plt.tight_layout()
+    plt.show()

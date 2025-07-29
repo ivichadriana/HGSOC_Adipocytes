@@ -1,33 +1,35 @@
-## install_remaining_pkgs.R  – install what Conda can’t
+## This runs *inside* env_deconv_R after conda‑env creation
 options(
   repos = c(CRAN = "https://cloud.r-project.org"),
-  Ncpus  = parallel::detectCores(),
-  # ← prevent CRAN/Bioc from upgrading Conda-installed binaries
-  install.packages.compile.from.source = "never"
+  Ncpus = parallel::detectCores(),
+  install.packages.compile.from.source = "never"  # use binaries where possible
 )
 
-need  <- function(pkg) !requireNamespace(pkg, quietly = TRUE)
+need <- function(p) !requireNamespace(p, quietly = TRUE)
 
 if (need("BiocManager"))
-    install.packages("BiocManager", dependencies = FALSE)
+  install.packages("BiocManager", dependencies = FALSE)
 
-## 1) consensusOV  (skip upgrades of existing deps)
-if (need("consensusOV"))
-    BiocManager::install("consensusOV",
-                         update       = FALSE,     # ← KEY
-                         ask          = FALSE,
-                         dependencies = TRUE)
+if (need("remotes"))
+  install.packages("remotes", dependencies = FALSE)
 
-## 2) NMF  (skip upgrades too)
-if (need("NMF"))
-    install.packages("NMF", dependencies = TRUE, INSTALL_opts = "--no-test-load")
+## ── Bioconductor pkgs not on conda-forge / bioconda ───────────────────────
+BiocManager::install(
+  c("GSVA", "genefu", "impute", "SpatialExperiment", "amap"),
+  ask = FALSE, update = FALSE
+)
 
-## 3) InstaPrism from GitHub
-if (need("InstaPrism")) {
-    if (need("remotes"))
-        install.packages("remotes", dependencies = FALSE)
-    remotes::install_github("humengying0907/InstaPrism",
-                            upgrade = "never")      # ← don’t touch RcppArmadillo
-}
+## ── GitHub‑only packages ──────────────────────────────────────────────────
+remotes::install_github(
+  "bhklab/consensusOV",
+  build_vignettes = FALSE,
+  upgrade         = "never"
+)
 
-message("✓ R-side package installation finished")
+remotes::install_github(
+  "humengying0907/InstaPrism",
+  build_vignettes = FALSE,
+  upgrade         = "never"
+)
+
+cat("✓ All remaining R packages installed\n")

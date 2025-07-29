@@ -19,34 +19,38 @@
 #       - env_deconv      : Python‑focused tools (papermill, etc.)
 #       - env_deconv_R    : R runtime with required Bioconductor packages.
 #   * SLURM (optional): SLURM_SUBMIT_DIR is automatically handled when present.
+
 # ------------------------------------------------------------------------------
 set -Eeuo pipefail      # -E  : inherit traps, -e : exit on error, -u : unset vars, -o pipefail : propagate failures
 IFS=$'\n\t'             # safer default IFS
+PROJECT_ROOT="$(realpath "$(dirname "$0")/..")"
+export PYTHONPATH="${PROJECT_ROOT}${PYTHONPATH+:$PYTHONPATH}"
 
 # ---------------------------- 0. Environment setup ----------------------------
 # Build or update conda environments.
-python scripts/0_create_environment.py
-
+bash scripts/0_create_environments.sh
+source activate base 
 # ------------------------------ 1. Python phase -------------------------------
-echo "→ Activating Python environment: env_deconv"
-conda activate env_deconv
-sleep 5  # give conda a moment to fully initialize
+# echo "→ Activating Python environment: env_deconv"
+# conda activate env_deconv
+# sleep 5  # give conda a moment to fully initialize
 
-echo "→ Unzipping input data"
-python scripts/1_unzip_input_data.py
+# echo "→ Unzipping input data"
+# python scripts/1_unzip_input_data.py
 
-echo "→ Deactivating Python environment"
-conda deactivate
-sleep 5
+# echo "→ Deactivating Python environment"
+# conda deactivate
+# sleep 5
 
 # ------------------------------- 2. R phase -----------------------------------
 echo "→ Activating R environment: env_deconv_R"
+set +u                    # disable “unbound variable” checking
 conda activate env_deconv_R
+set -u                    # re‑enable after activation
 sleep 5
 
 # Run the R‑based deconvolution workflow (each step is idempotent).
 echo "→ Running R deconvolution pipeline"
-Rscript --vanilla scripts/1_run_pipeline.R
 Rscript --vanilla scripts/2_process_data_and_subtypes.R
 Rscript --vanilla scripts/3_prepare_deconvolution.R
 Rscript --vanilla scripts/4_run_deconvolution.R
@@ -58,35 +62,35 @@ sleep 5
 # --------------------------- 3. Notebook reporting ----------------------------
 # Reactivate Python environment for Papermill‑based reporting.
 
-echo "→ Reactivating Python environment for reporting"
-conda activate env_deconv
+# echo "→ Reactivating Python environment for reporting"
+# conda activate env_deconv
 
-# Resolve the project base directory. Works for SLURM and local execution.
-BASE_DIR=$(realpath "${SLURM_SUBMIT_DIR:-$(pwd)}/..")
-NB_DIR="${BASE_DIR}/notebooks"
+# # Resolve the project base directory. Works for SLURM and local execution.
+# BASE_DIR=$(realpath "${SLURM_SUBMIT_DIR:-$(pwd)}/..")
+# NB_DIR="${BASE_DIR}/notebooks"
 
-# Array of notebook basenames (without .ipynb)
-NOTEBOOKS=(
-  analysis_proportions_visualizations
-  analysis_proportions_vs_bmi_and_age
-  analysis_proportions_vs_race
-  analysis_proportions_vs_residual
-  analysis_proportions_vs_stage
-  analysis_proportions_vs_subtype
-  analysis_proportions_vs_subtype_and_race
-  analysis_proportions_vs_survival
-  analysis_proportions_vs_survival_and_race
-  analysis_proportions_vs_tissue
-)
+# # Array of notebook basenames (without .ipynb)
+# NOTEBOOKS=(
+#   analysis_proportions_visualizations
+#   analysis_proportions_vs_bmi_and_age
+#   analysis_proportions_vs_race
+#   analysis_proportions_vs_residual
+#   analysis_proportions_vs_stage
+#   analysis_proportions_vs_subtype
+#   analysis_proportions_vs_subtype_and_race
+#   analysis_proportions_vs_survival
+#   analysis_proportions_vs_survival_and_race
+#   analysis_proportions_vs_tissue
+# )
 
-# Iterate over notebooks and execute each with Papermill, saving *_RUN.ipynb.
-for nb in "${NOTEBOOKS[@]}"; do
-  IN="${NB_DIR}/${nb}.ipynb"
-  OUT="${NB_DIR}/${nb}_RUN.ipynb"
+# # Iterate over notebooks and execute each with Papermill, saving *_RUN.ipynb.
+# for nb in "${NOTEBOOKS[@]}"; do
+#   IN="${NB_DIR}/${nb}.ipynb"
+#   OUT="${NB_DIR}/${nb}_RUN.ipynb"
 
-  echo "→ Executing ${nb}.ipynb"
-  papermill "$IN" "$OUT"
+#   echo "→ Executing ${nb}.ipynb"
+#   papermill "$IN" "$OUT"
 
-done
+# done
 
 echo "✓ Pipeline complete! All notebooks executed successfully."

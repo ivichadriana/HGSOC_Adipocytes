@@ -1,13 +1,12 @@
 ##########################################################################################
 ### 1_process_data_and_subtypes.R
 ### 
-### This script reads the bulk RNA sequencing and microarray datasets and filters them
-### to only include genes present in one common gene mapping list. It transforms the
-### microarray data using 2^(***) to match the scale of the bulk RNA sequencing data values
+### This script reads the bulk RNA sequencing datasets and filters them
+### to only include genes present in one common gene mapping list.
 ### – this is used for InstaPrism deconvolution. It also transforms the bulk RNA sequencing
-### data using log10(***+1) to match the scale of the microarray data – this is used for
-### clustering. All of these matrices are saved in a uniform format containing on sample
-### ID (rows) and genes (columns); file names are appended with either “asImported” or
+### data using log10(***+1) - this is used for clustering. All of these matrices are saved in 
+### a uniform format containing on sample ID (rows) and genes (columns);
+### file names are appended with either “asImported” or
 ### “transformed.” It also saves any metadata information (ex. prior clustering) about
 ### the samples in a separate file for reference.
 ##########################################################################################
@@ -18,8 +17,9 @@ gc()
 
 ## ── Activate correct library path ────────────────────────────────────────
 if (Sys.getenv("CONDA_DEFAULT_ENV") != "env_deconv_R") {
-  stop("Please run `conda activate env_deconv_R` (or add it to your job script) ",
-       "before launching 1_get_data.R")
+  stop("Please run `conda activate env_deconv_R` (or add it to your job script) ", 
+    "before launching 1_process_data_and_subtypes.R")
+
 }
 ## Show current library location for sanity
 message("Using library path: ", .libPaths()[1])
@@ -27,13 +27,7 @@ message("Using library path: ", .libPaths()[1])
 # Load Required Libraries
 library(data.table)
 library(dplyr)
-library(Biobase)  # for ExpressionSet access
-library(curatedOvarianData)
 library(here)
-library(readxl)
-library(caret)
-library(cluster)
-library(NMF)
 library(consensusOV)
 
 
@@ -87,25 +81,6 @@ read_format_expr <- function(in_file, metadata_table){
   return(list(full_df, gene_ids))
 }
 
-# read curatedOvarianData data from an in_df object
-read_format_cOD_expr <- function(in_df, metadata_table){
-  rnaseq_expr_df <- as.data.frame(in_df)  # ensure data.frame
-  gene_ids <- rownames(rnaseq_expr_df)
-  sample_ids <- colnames(rnaseq_expr_df)
-  
-  # Transpose
-  rnaseq_expr_df <- data.frame(t(rnaseq_expr_df))
-  colnames(rnaseq_expr_df) <- gene_ids
-  
-  # Create sample ID col
-  rnaseq_expr_df$ID <- sample_ids
-  
-  # Merge with metadata
-  full_df <- merge(metadata_table, rnaseq_expr_df, by = "ID")
-  
-  return(list(full_df, gene_ids))
-}
-
 ##########################################################
 # 2) Filter to MAD_genes & write out as CSV plus metadata
 #    We'll define a function that saves both the 'as
@@ -119,8 +94,6 @@ save_dual_versions <- function(expr_merged, dataset_name, transform_type = c("rn
   save_filtered(expr_merged, dataset_name, suffix = "asImported")
   
   # 2) Create a “transformed” version
-  #    For bulk RNA seq (SchildkrautB, SchildkrautW, TCGA_bulk), log10(...+1)
-  #    For microarray (TCGA_microarray, Tothill, Yoshihara), do 2^(...)
   transform_type <- match.arg(transform_type)
   if (transform_type == "rnaseq") {
     expr_transformed <- transform_rnaseq(expr_merged)
@@ -239,10 +212,7 @@ save_dual_versions(
 
 message("All datasets transformed and saved as both asImported & transformed versions!")
 
-
-
-
-######### Now clustering and subtyping #########
+######### Now Subtyping #########
 
 # Set base directories
 # Be sure to open this script along with a corresponding project
@@ -275,7 +245,7 @@ gene_map <- data.frame(fread(gene_map_file))
 # This function reads raw counts (for RNAseq data - asImported), and
 # 2^(...) scaled "pseudocounts" data (for microarray - transformed).
 read_dataset_counts <- function(dataset_name) {
-  if (dataset_name == "SchildkrautB" | dataset_name == "SchildkrautW" | dataset_name == "TCGA_bulk"){
+  if (dataset_name == "SchildkrautB" | dataset_name == "SchildkrautW"){
     fpath <- file.path(output_data, paste0("bulk_datasets/", dataset_name, "_filtered_asImported.csv"))
     df <- data.frame(fread(fpath))
     rownames(df) <- df$ID
@@ -295,7 +265,7 @@ read_dataset_counts <- function(dataset_name) {
 # This function reads log10(...+1) transformed data (for RNAseq data - transformed), and
 # raw log2 data (for microarray - asImported).
 read_dataset_log <- function(dataset_name) {
-  if (dataset_name == "SchildkrautB" | dataset_name == "SchildkrautW" | dataset_name == "TCGA_bulk"){
+  if (dataset_name == "SchildkrautB" | dataset_name == "SchildkrautW"){
     fpath <- file.path(output_data, paste0("bulk_datasets/", dataset_name, "_filtered_transformed.csv"))
     df <- data.frame(fread(fpath))
     rownames(df) <- df$ID
@@ -308,44 +278,6 @@ read_dataset_log <- function(dataset_name) {
     df$ID <- NULL
     return(df)
   }
-}
-
-# run_kmeans():
-# We will run the kmeans clustering on raw log2/log10(...+1) scaled data
-# The matrix is (samples × genes).
-run_kmeans <- function(samp_x_gene) {
-  out_df <- data.frame(ID = rownames(samp_x_gene))
-  for (k in c(2, 3, 4)) {
-    km <- kmeans(samp_x_gene, centers=k, nstart=25)
-    out_df[[paste0("ClusterK", k, "_kmeans")]] <- km$cluster
-  }
-  return(out_df)
-}
-
-# run_nmf():
-# We will run the NMF clustering on raw counts/2^(...) scaled data
-# For NMF, we need row=genes, col=samples => transpose
-run_nmf <- function(samp_x_gene) {
-    # ── log2 transform ────────────────────────────────────────
-  samp_x_gene <- log2(samp_x_gene + 1)          # still non-negative
-  gene_x_samp <- t(samp_x_gene)  # row=genes, col=samples
-    #r ── emove rows that are entirely 0/NA ─────────────────────
-  keep <- rowSums(gene_x_samp, na.rm = TRUE) > 0
-  gene_x_samp <- gene_x_samp[keep, , drop = FALSE]
-  # ──  and ensure positivity  ─────────────────────
-  minval <- min(gene_x_samp, na.rm=TRUE)
-  if (minval < 0) {
-    gene_x_samp <- gene_x_samp - minval + 1e-3
-  }
-  out_df <- data.frame(ID=rownames(samp_x_gene)) 
-  for (k in c(2,3,4)) {
-    nmf_res <- nmf(gene_x_samp, rank=k, nrun=10, .options='v')
-    clust <- predict(nmf_res)
-    # reorder to match rownames(samp_x_gene)
-    sampleIDs <- colnames(gene_x_samp)  # same as rownames(samp_x_gene)
-    out_df[[paste0("ClusterK", k, "_NMF")]] <- clust[sampleIDs]
-  }
-  return(out_df)
 }
 
 # run_consensusOV():
@@ -423,20 +355,14 @@ for (ds in dataset_list) {
   expr_df_counts <- read_dataset_counts(ds)
   expr_df_log <- read_dataset_log(ds)
   
-  # 2) K-means
-  kmeans_out <- run_kmeans(expr_df_log)
-  
-  # 3) NMF
-  nmf_out <- run_nmf(expr_df_counts)
-  
-  # 4) consensusOV
+  # 2) consensusOV
   cov_out <- run_consensusOV(expr_df_counts)
   
-  # 5) Combine
-  combined <- combine_clusterings(kmeans_out, nmf_out, cov_out)
+  # 3) Combine
+  combined <- cov_out
   combined$Dataset <- ds
   
-  # 6) Write per-dataset
+  # 4) Write per-dataset
   outf <- file.path(clustering_results_dir, paste0(ds, "_clustering_labels.csv"))
   write.csv(combined, outf, row.names=FALSE)
   

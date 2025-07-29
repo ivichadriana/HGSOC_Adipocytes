@@ -4,6 +4,13 @@ set -euo pipefail
 ###############################################################################
 #  Helper: create-or-update an env from the right YAML                       #
 ###############################################################################
+
+export CC=clang CXX=clang++ FC=$CONDA_PREFIX/bin/gfortran
+export CFLAGS="-Os -march=native"
+export FFLAGS="$CFLAGS"
+export LDFLAGS="-L$CONDA_PREFIX/lib"
+export CPPFLAGS="-I$CONDA_PREFIX/include"
+
 make_env () {
   local env_name="$1" mac_yaml="$2" linux_yaml="$3"
 
@@ -44,7 +51,7 @@ make_env \
   "${env_dir}/env_deconv_R_mac.yml" \
   "${env_dir}/env_deconv_R_linux.yml"
 
-echo "→ Installing remaining R packages (if any)…"
+echo "→ Installing remaining R packages…"
 conda run -n env_deconv_R Rscript "$r_post"
 echo "✓ Finished bootstrap for env_deconv_R"
 
@@ -52,11 +59,11 @@ echo "✓ Finished bootstrap for env_deconv_R"
 #  2) Build / update the *Python* environment                                 #
 ###############################################################################
 make_env \
-  env_deconv_py \
+  env_deconv \
   "${env_dir}/env_deconv_mac.yml" \
   "${env_dir}/env_deconv_linux.yml"
 
-echo "✓ Finished bootstrap for env_deconv_py"
+echo "✓ Finished bootstrap for env_deconv"
 
 echo "✓  All environments created and up-to-date!"
 

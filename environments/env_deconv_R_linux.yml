@@ -1,29 +1,36 @@
 name: env_deconv_R
-channels:                 # keep this exact order
+# --------------------------------------------------------------------------
+# Linux build – designed to work on any x86‑64 (including SLURM clusters)
+#   • No “libgfortran‑devel_linux‑64”     (ISO_Fortran_binding.h clash)
+#   • No “xorg‑libx11”                    (Xlib.h / Xutil.h clash with tk)
+#   • Strict channel priority so the solver won’t mix in conflicting builds
+# --------------------------------------------------------------------------
+channels:
   - conda-forge
   - bioconda
   - defaults
 
+channel_priority: strict
+
 dependencies:
-  # ── core R runtime ─────────────────────────────────────────────
-  - r-base=4.3
-  - libblas=*=*openblas      # avoids MKL / OpenBLAS mix-ups
-  - r-rcpparmadillo 
-  # ── CRAN pkgs available on conda-forge ─────────────────────────
+  # ───── Core runtime ─────
+  - r-base=4.4.1            # same R version as on macOS
+  - tk                      # tcl/tk for R’s tcltk; *leave out xorg‑libx11*
+
+  # ───── CRAN packages shipped as binaries ─────
   - r-data.table
   - r-dplyr
   - r-here
-  - r-readxl
-  - r-caret
-  - r-cluster
-  - r-nmf
-  - r-seurat                # Seurat 5.0 is on conda-forge
-  # ── Bioconductor pkgs on Bioconda ─────────────────────────────
-  - bioconductor-biobase
-  - bioconductor-curatedovariandata   # ✔ available :contentReference[oaicite:0]{index=0}
-  - bioconductor-consensusov          # 1.24.0 is the latest on Bioconda :contentReference[oaicite:1]{index=1}
+  - r-matrix
+  - r-seurat
+
+  # ───── Bioconductor binaries ─────
+  - bioconductor-singlecellexperiment
   - bioconductor-scuttle
-  # ── system libs that some R pkgs need ─────────────────────────
-  - curl
-  - libxml2
-  - openssl
+  - bioconductor-miqc
+
+  # ───── Compiler toolchain (Linux‑64) ─────
+  # Using the canonical conda‑forge compiler “impl” metapackages so that
+  # libgfortran‑devel_linux‑64 *never* gets pulled in.
+  - gcc_impl_linux-64          # C/C++
+  - gfortran_impl_linux-64     # Fortran compiler + runtime

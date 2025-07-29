@@ -1,14 +1,14 @@
 ''' The following scipt takes in a directory path as input, and 
     unzips all the gzip and zip files in that directory.
     It will not overwrite existing files.
-    Usage: python unzip_if_needed.py <directory_path>'''
+    Usage: python 1_unzip_input_data.py <directory_path>'''
 
 import os
 import sys
 import gzip
 import zipfile
 import pandas as pd
-
+from pathlib import Path
 sys.path.insert(1, '../../')
 sys.path.insert(1, '../')
 sys.path.insert(1, '../../../')
@@ -43,13 +43,18 @@ def main(path):
                     print(f"Skipped existing file: {dest_path}")
 
     # finally formatting the data for R:
-    W = pd.read_csv(f"{path}salmon_raw_counts_for_way_pipeline_whites.tsv", index_col=0, sep='\t')
-    W.to_csv(f"{path}salmon_raw_counts_for_way_pipeline_whites.tsv", sep='\t')
-    B = pd.read_csv(f"{path}salmon_raw_counts_for_way_pipeline.tsv", index_col=0, sep='\t')
-    B.to_csv(f"{path}salmon_raw_counts_for_way_pipeline.tsv", sep='\t')
+    W = pd.read_csv(f"{path}/salmon_raw_counts_for_way_pipeline_whites.tsv", index_col=0, sep='\t')
+    W.to_csv(f"{path}/salmon_raw_counts_for_way_pipeline_whites.tsv", sep='\t')
+    B = pd.read_csv(f"{path}/salmon_raw_counts_for_way_pipeline.tsv", index_col=0, sep='\t')
+    B.to_csv(f"{path}/salmon_raw_counts_for_way_pipeline.tsv", sep='\t')
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python unzip_if_needed.py <directory_path>")
+    if len(sys.argv) == 2:
+        data_dir = sys.argv[1]                       # path supplied
     else:
-        main(sys.argv[1])
+        # default:  one level above /scripts/ → input_data/
+        project_root = Path(__file__).resolve().parents[1]
+        data_dir = project_root / "input_data"
+        print(f"No directory given – defaulting to {data_dir}")
+
+    main(str(data_dir))
