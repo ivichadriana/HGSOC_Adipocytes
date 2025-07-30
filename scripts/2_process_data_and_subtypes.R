@@ -30,6 +30,19 @@ library(dplyr)
 library(here)
 library(consensusOV)
 
+################################################################################
+### reproducibility
+################################################################################
+SEED <- 88         
+
+set.seed(SEED)       # base‑R RNG                       :contentReference[oaicite:0]{index=0}
+RNGkind(kind = "L'Ecuyer-CMRG")   # parallel‑safe RNG   :contentReference[oaicite:1]{index=1}
+
+library(BiocParallel)
+register(
+  MulticoreParam(workers = 4, RNGseed = SEED, progressbar = TRUE)
+)
+################################################################################
 
 # Set base directories
 # Be sure to open this script along with a corresponding project

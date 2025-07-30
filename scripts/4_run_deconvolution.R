@@ -31,6 +31,20 @@ library(data.table)
 library(Matrix)
 library(here)
 
+################################################################################
+### reproducibility
+################################################################################
+SEED <- 88
+
+set.seed(SEED)       # base‑R RNG                       :contentReference[oaicite:0]{index=0}
+RNGkind(kind = "L'Ecuyer-CMRG")   # parallel‑safe RNG   :contentReference[oaicite:1]{index=1}
+
+library(BiocParallel)
+register(
+  MulticoreParam(workers = 4, RNGseed = SEED, progressbar = TRUE)
+)
+################################################################################
+
 # Be sure to open this script along with a corresponding project
 # that is located in the same directory as the scripts and the 
 # input_data folder and enclosed files.

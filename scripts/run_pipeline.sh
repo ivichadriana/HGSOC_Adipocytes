@@ -56,14 +56,18 @@ Rscript --vanilla scripts/3_prepare_deconvolution.R
 Rscript --vanilla scripts/4_run_deconvolution.R
 
 echo "→ Deactivating R environment"
+set +u               
 conda deactivate
+set -u              
 sleep 5
 
 # --------------------------- 3. Notebook reporting ----------------------------
 # Reactivate Python environment for Papermill‑based reporting.
 
 # echo "→ Reactivating Python environment for reporting"
+# set +u 
 # conda activate env_deconv
+# set -u   
 
 # # Resolve the project base directory. Works for SLURM and local execution.
 # BASE_DIR=$(realpath "${SLURM_SUBMIT_DIR:-$(pwd)}/..")
