@@ -28,7 +28,7 @@ export PYTHONPATH="${PROJECT_ROOT}${PYTHONPATH+:$PYTHONPATH}"
 
 # ---------------------------- 0. Environment setup ----------------------------
 # Build or update conda environments.
-bash scripts/0_create_environments.sh
+# bash scripts/0_create_environments.sh
 source activate base 
 # ------------------------------ 1. Python phase -------------------------------
 # echo "→ Activating Python environment: env_deconv"
@@ -51,7 +51,7 @@ sleep 5
 
 # Run the R‑based deconvolution workflow (each step is idempotent).
 echo "→ Running R deconvolution pipeline"
-Rscript --vanilla scripts/2_process_data_and_subtypes.R
+# Rscript --vanilla scripts/2_process_data_and_subtypes.R
 Rscript --vanilla scripts/3_prepare_deconvolution.R
 Rscript --vanilla scripts/4_run_deconvolution.R
 
