@@ -7,6 +7,62 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from lifelines import KaplanMeierFitter
 
+def get_variable_renaming():
+    return renaming = {"suid"          : "ID",
+                   "refage"        : "Age",
+                   "vital_status_fin": "Event",
+                   "years_extend"  : "Time_Yrs",
+                    "tissue"  : "Tissue",
+                   "stage"         : "Stage",
+                   "race"          : "Race",
+                   "dblk_treat"    : "Debulk",
+                   "hispanic"      : "Hispanic",
+                   "bmi_recent"    : "BMI",
+                   "neoadj_treat" : "NeoTx",
+                   "adj_treat"     : "AdjTx",
+                   "resdis_treat"  : "Residual"}
+                   
+def get_tissue_dictionary():
+    return tissue_dictionary = {"right ovary": "Ovary",
+                     "left ovary": "Ovary",
+                     "ovary": "Ovary",
+                      "left ovarian mass": "Ovary",
+                     "right fallopian tube": "Fallopian Tube",
+                     "left fallopian tube": "Fallopian Tube",
+                     "fallopian tube": "Fallopian Tube",
+                     "left fallopian tube and ovary": "Fallopian Tube and Ovary",
+                     "right fallopian tube and ovary": "Fallopian Tube and Ovary",
+                     "right ovary and fallopian tube": "Fallopian Tube and Ovary",
+                     "left ovary and fallopian tube": "Fallopian Tube and Ovary",
+                     "bilateral tubes and ovaries: tumor including possible ovarian tissue": "Fallopian Tube and Ovary",
+                     "tubes and ovaries/cancer": "Fallopian Tube and Ovary",
+                     "fallopian tube and ovary": "Fallopian Tube and Ovary",
+                     "omentum": "Omentum",
+                     "omental tumor": "Omentum",
+                     "omentum (note: ovarian primary)": "Omentum",
+                     "omentum or peritoneum": "Omentum",
+                     "peritoneum or omentum": "Omentum",
+                     "omentum or cul-de-sac implant": "Omentum",
+                     "umbilicus": "Other",
+                     "left ovary with adherent omentum": "Other",
+                     "representative section of mesenteric nodule": "Other",
+                     "representative section of mesenteric nodule": "Other",
+                     "representative sections of tumor":  "Other",
+                     "posterior wall of myometrium": "Other",
+                     "left ovary and peritoneum": "Other",
+                     "omentum or ovary": "Other",
+                     "fallopian tube or ovary": "Other",
+                     "cervix and colon": "Other",
+                     "probable adnexal structure with papillary mass": "Other",
+                     "peritoneum": "Other",
+                    }
+
+# continuous covariates to keep “as is”
+cont_cols = ["Age", "BMI"]
+
+def p_to_star(p):
+    return "***" if p < 0.001 else "**" if p < 0.01 else "*" if p < 0.05 else ""
+
 def ungzip_file(gzip_path, dest_path):
     with gzip.open(gzip_path, 'rb') as f_in, open(dest_path, 'wb') as f_out:
         f_out.write(f_in.read())
