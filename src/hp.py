@@ -1,14 +1,212 @@
+'''
+The following script has functions used in the notebooks of the repository.
+Functions can be imported with import src.hp as hp (make sure python path includes folder).
+'''
+
 import gzip
 import os
 import zipfile
 import pandas as pd
+from statsmodels.othermod.betareg import BetaModel    
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 from lifelines import KaplanMeierFitter
+from lifelines import CoxPHFitter
+from lifelines.utils import k_fold_cross_validation
+import statsmodels.api as sm
+from sklearn.model_selection import ParameterGrid
+
+def count_decimal_places(x):
+    s = format(x, '.16f').rstrip('0')  # high precision, strip trailing zeros
+    if '.' in s:
+        return len(s.split('.')[1])
+    else:
+        return 0
+
+def boxplots_by_cutoff(
+    df: pd.DataFrame,
+    feature: str,                 # e.g., "BMI" or "Age"
+    threshold: float,             # e.g., 30 or 50
+    macro_cols: list,             # e.g., fractions
+    *,
+    flag_name: str | None = None, # default: f"{feature}_high"
+    ylabel: str = "Proportion",
+    palette: str = "Set2",
+    figsize=(6,4),
+    rotate_x=30,
+    title: str | None = None,
+    legend_title: str | None = None,
+    ax=None,
+    add_flag_to_df: bool = False  # set True if you want the 0/1 column added to df
+):
+    """
+    Creates a binary flag (>= threshold), melts macro_cols for tidy plotting, and draws a boxplot.
+    Returns the long (melted) DataFrame and the matplotlib Axes used.
+    """
+    # Determine flag/labels
+    if flag_name is None:
+        flag_name = f"{feature}_high"
+    if legend_title is None:
+        legend_title = f"{feature} \u2265 {threshold}"
+    if title is None:
+        title = f"Cell group proportions by {feature} class"
+
+    # Build a temporary frame with the flag and macro columns (no mutation unless requested)
+    flag_series = (df[feature] >= threshold).astype(int)
+    tmp = pd.concat([flag_series.rename(flag_name), df[macro_cols]], axis=1)
+
+    # Optionally persist the flag on the original df
+    if add_flag_to_df:
+        df[flag_name] = flag_series
+
+    # Tidy (long) table
+    long = tmp.melt(id_vars=flag_name, var_name="Group", value_name="Prop")
+
+    # Plot
+    sns.set(style="whitegrid", palette=palette)
+    created_ax = False
+    if ax is None:
+        plt.figure(figsize=figsize)
+        ax = plt.gca()
+        created_ax = True
+
+    sns.boxplot(
+        data=long, x="Group", y="Prop", hue=flag_name,
+        showcaps=False, fliersize=3, width=0.6, ax=ax
+    )
+    ax.set_ylabel(ylabel)
+    ax.set_xlabel("")
+    ax.tick_params(axis="x", rotation=rotate_x)
+    ax.legend(title=legend_title)
+    ax.set_title(title)
+    plt.tight_layout()
+    if created_ax:
+        plt.show()
+
+    return long, ax
+
+def beta_diagnostics(model, frac_name):
+    """
+    Diagnostics for a statsmodels.othermod.betareg.BetaResults object.
+    """
+    # ---- pull residuals, fitted, influence ------------------------------
+    pearson  = model.resid_pearson
+    fitted   = model.fittedvalues
+
+    infl      = model.get_influence()
+    leverage  = infl.hat_matrix_diag          # h_ii
+    cooks_d   = infl.cooks_distance[0]
+
+    # studentised Pearson residuals
+    stud_res = pearson / np.sqrt(1 - leverage)
+
+    # ---- plotting --------------------------------------------------------
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4.5), dpi=300)
+
+    # 1 ─ Residuals vs. fitted -------------------------------------------
+    axes[0].scatter(fitted, pearson, alpha=0.7)
+    axes[0].axhline(0, color="gray", lw=1)
+    axes[0].set_xlabel("Fitted value", weight="bold")
+    axes[0].set_ylabel("Pearson residual", weight="bold")
+    axes[0].set_title(f"{frac_name}: Residuals vs. Fitted")
+
+    # 2 ─ QQ-plot of studentised residuals --------------------------------
+    sm.qqplot(stud_res, line="45", ax=axes[1])
+    axes[1].set_title(f"{frac_name}: QQ-plot (studentised res.)")
+
+    # 3 ─ Leverage vs. residuals with Cook’s D ----------------------------
+    sc = axes[2].scatter(leverage, pearson, c=cooks_d,
+                         cmap="viridis", alpha=0.7)
+    axes[2].set_xlabel("Leverage", weight="bold")
+    axes[2].set_ylabel("Pearson residual", weight="bold")
+    axes[2].set_title(f"{frac_name}: Influence")
+    cb = fig.colorbar(sc, ax=axes[2])
+    cb.set_label("Cook’s D")
+
+    plt.tight_layout()
+    plt.show()
+
+def tune_cox_penalty(
+    data: pd.DataFrame,
+    duration_col: str,
+    event_col: str,
+    search_grid: dict | None = None,
+    k: int = 5,
+    strata: str | None = None,
+    scoring: str = "concordance_index",
+) -> tuple[pd.DataFrame, dict, pd.DataFrame]:
+    """
+    Grid-search cross-validation for lifelines.CoxPHFitter penalties.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        Input table (rows = subjects, cols = covariates + time + event).
+    duration_col, event_col : str
+        Column names used by lifelines.
+    search_grid : dict
+        Keys = hyper-parameter names, values = list/array of candidate values.
+        Defaults to a modest ridge grid.
+    k : int
+        Number of CV folds (default 5).
+    strata : str | None
+        Optional column name to stratify by (passed to fitter_kwargs).
+    scoring : str
+        lifelines scoring method (default "concordance_index").
+
+    Returns
+    -------
+    cv_results : pd.DataFrame
+        One row per grid point with mean and SD of the CV metric.
+    best_params : dict
+        Row (as dict) with the highest mean CV score.
+    failures : pd.DataFrame
+        Grid points that raised exceptions, with error messages.
+    """
+    if search_grid is None:
+        search_grid = {
+            "penalizer": [1e-4, 1e-3, 1e-2, 0.05, 0.1, 0.2, 0.3, 0.5],
+            "l1_ratio":  [0.0],
+        }
+
+    successes, failures = [], []
+
+    for params in ParameterGrid(search_grid):
+        cph = CoxPHFitter(**{k: params[k] for k in ("penalizer", "l1_ratio")})
+        try:
+            cidx = k_fold_cross_validation(
+                cph,
+                data,
+                duration_col=duration_col,
+                event_col=event_col,
+                k=k,
+                scoring_method=scoring,
+                fitter_kwargs={"strata": strata} if strata else None,
+            )
+            successes.append(
+                {
+                    **params,
+                    "c_index_mean": np.mean(cidx),
+                    "c_index_sd": np.std(cidx),
+                }
+            )
+        except Exception as e:
+            failures.append({**params, "error": str(e)})
+
+    cv_df = (
+        pd.DataFrame(successes).sort_values("c_index_mean", ascending=False)
+        if successes
+        else pd.DataFrame()
+    )
+    best = cv_df.iloc[0].to_dict() if not cv_df.empty else {}
+    fail_df = pd.DataFrame(failures)
+
+    return cv_df, best, fail_df
+
 
 def get_variable_renaming():
-    return renaming = {"suid"          : "ID",
+    renaming = {"suid"          : "ID",
                    "refage"        : "Age",
                    "vital_status_fin": "Event",
                    "years_extend"  : "Time_Yrs",
@@ -21,9 +219,10 @@ def get_variable_renaming():
                    "neoadj_treat" : "NeoTx",
                    "adj_treat"     : "AdjTx",
                    "resdis_treat"  : "Residual"}
+    return renaming
                    
 def get_tissue_dictionary():
-    return tissue_dictionary = {"right ovary": "Ovary",
+    tissue_dictionary = {"right ovary": "Ovary",
                      "left ovary": "Ovary",
                      "ovary": "Ovary",
                       "left ovarian mass": "Ovary",
@@ -56,7 +255,7 @@ def get_tissue_dictionary():
                      "probable adnexal structure with papillary mass": "Other",
                      "peritoneum": "Other",
                     }
-
+    return tissue_dictionary
 # continuous covariates to keep “as is”
 cont_cols = ["Age", "BMI"]
 

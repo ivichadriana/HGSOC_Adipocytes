@@ -1,7 +1,7 @@
-''' The following scipt takes in a directory path as input, and 
+""" The following scipt takes in a directory path as input, and 
     unzips all the gzip and zip files in that directory.
     It will not overwrite existing files.
-    Usage: python 1_unzip_input_data.py <directory_path>'''
+    Usage: python 1_unzip_input_data.py <directory_path>"""
 
 import os
 import sys
@@ -9,12 +9,14 @@ import gzip
 import zipfile
 import pandas as pd
 from pathlib import Path
-sys.path.insert(1, '../../')
-sys.path.insert(1, '../')
-sys.path.insert(1, '../../../')
+
+sys.path.insert(1, "../../")
+sys.path.insert(1, "../")
+sys.path.insert(1, "../../../")
 
 from src.hp import unzip_file
 from src.hp import ungzip_file
+
 
 def main(path):
     if not os.path.isdir(path):
@@ -25,17 +27,17 @@ def main(path):
         for filename in files:
             full_path = os.path.join(root, filename)
 
-            if filename.endswith('.gzip'):
+            if filename.endswith(".gzip"):
                 dest_path = full_path[:-5]  # remove .gzip
                 if not os.path.exists(dest_path):
                     ungzip_file(full_path, dest_path)
                 else:
                     print(f"Skipped existing file: {dest_path}")
 
-            elif filename.endswith('.zip'):
+            elif filename.endswith(".zip"):
                 unzip_file(full_path, root)
 
-            if filename.endswith('.gz'):
+            if filename.endswith(".gz"):
                 dest_path = full_path[:-3]  # remove .gz
                 if not os.path.exists(dest_path):
                     ungzip_file(full_path, dest_path)
@@ -43,14 +45,19 @@ def main(path):
                     print(f"Skipped existing file: {dest_path}")
 
     # finally formatting the data for R:
-    W = pd.read_csv(f"{path}/salmon_raw_counts_for_way_pipeline_whites.tsv", index_col=0, sep='\t')
-    W.to_csv(f"{path}/salmon_raw_counts_for_way_pipeline_whites.tsv", sep='\t')
-    B = pd.read_csv(f"{path}/salmon_raw_counts_for_way_pipeline.tsv", index_col=0, sep='\t')
-    B.to_csv(f"{path}/salmon_raw_counts_for_way_pipeline.tsv", sep='\t')
+    W = pd.read_csv(
+        f"{path}/salmon_raw_counts_for_way_pipeline_whites.tsv", index_col=0, sep="\t"
+    )
+    W.to_csv(f"{path}/salmon_raw_counts_for_way_pipeline_whites.tsv", sep="\t")
+    B = pd.read_csv(
+        f"{path}/salmon_raw_counts_for_way_pipeline.tsv", index_col=0, sep="\t"
+    )
+    B.to_csv(f"{path}/salmon_raw_counts_for_way_pipeline.tsv", sep="\t")
+
 
 if __name__ == "__main__":
     if len(sys.argv) == 2:
-        data_dir = sys.argv[1]                       # path supplied
+        data_dir = sys.argv[1]  # path supplied
     else:
         # default:  one level above /scripts/ → input_data/
         project_root = Path(__file__).resolve().parents[1]

@@ -1,23 +1,16 @@
 name: env_deconv_R
-# --------------------------------------------------------------------------
-# Linux build – designed to work on any x86‑64 (including SLURM clusters)
-#   • No “libgfortran‑devel_linux‑64”     (ISO_Fortran_binding.h clash)
-#   • No “xorg‑libx11”                    (Xlib.h / Xutil.h clash with tk)
-#   • Strict channel priority so the solver won’t mix in conflicting builds
-# --------------------------------------------------------------------------
 channels:
   - conda-forge
   - bioconda
-  - defaults
-
-channel_priority: strict
+  - defaults   # always last
 
 dependencies:
   # ───── Core runtime ─────
-  - r-base=4.4.1            # same R version as on macOS
-  - tk                      # tcl/tk for R’s tcltk; *leave out xorg‑libx11*
+  - r-base=4.4.1
+  - r-argparse          # tiny helper pulled by Seurat
+  - tk                  # R's tcltk; on Linux it may bring in X11 libs
 
-  # ───── CRAN packages shipped as binaries ─────
+  # ───── CRAN packages available as binaries ─────
   - r-data.table
   - r-dplyr
   - r-here
@@ -29,8 +22,29 @@ dependencies:
   - bioconductor-scuttle
   - bioconductor-miqc
 
-  # ───── Compiler toolchain (Linux‑64) ─────
-  # Using the canonical conda‑forge compiler “impl” metapackages so that
-  # libgfortran‑devel_linux‑64 *never* gets pulled in.
-  - gcc_impl_linux-64          # C/C++
-  - gfortran_impl_linux-64     # Fortran compiler + runtime
+  # ───── Compilers / build-tools (Linux) ─────
+  # Using the meta-package "compilers" brings gcc, g++, and gfortran for linux-64
+  - compilers
+  - make
+  - pkg-config
+
+  # ───── Common system libs often needed by R packages on Linux ─────
+  # (safe to keep; helps avoid source builds failing)
+  - libxml2
+  - libcurl
+  - zlib
+  - bzip2
+  - xz
+  - openssl
+  - libpng
+  - freetype
+  - fontconfig
+  - cairo
+  - pango
+
+  # ───── X11 libraries (generally fine on Linux; remove if truly headless) ─────
+  - xorg-libx11
+  - xorg-libxt
+  - xorg-libxrender
+  - xorg-libxau
+  - xorg-libxdmcp
