@@ -1,4 +1,4 @@
-""" The following scipt takes in a directory path as input, and 
+""" The following script takes in a directory path as input, and 
     unzips all the gzip and zip files in that directory.
     It will not overwrite existing files.
     Usage: python 1_unzip_input_data.py <directory_path>"""
