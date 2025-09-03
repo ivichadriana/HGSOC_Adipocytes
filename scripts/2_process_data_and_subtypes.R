@@ -339,7 +339,7 @@ run_consensusOV <- function(samp_x_gene) {
   
   # Ensure that no samples were accidentally filtered out
   if (nrow(out_df) != nrow(samp_x_gene)) {
-    warning("consensusOV did not generate a result for all samples in ", ds)
+    warning("consensusOV did not generate a result for all samples.")
   }
   
   return(out_df)
