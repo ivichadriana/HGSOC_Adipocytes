@@ -5,8 +5,6 @@
 
 import os
 import sys
-import gzip
-import zipfile
 import pandas as pd
 from pathlib import Path
 
@@ -28,7 +26,7 @@ def main(path):
             full_path = os.path.join(root, filename)
 
             if filename.endswith(".gzip"):
-                dest_path = full_path[:-5]  # remove .gzip
+                dest_path = full_path.rsplit(".gzip", 1)[0]  # remove .gzip
                 if not os.path.exists(dest_path):
                     ungzip_file(full_path, dest_path)
                 else:
@@ -38,7 +36,7 @@ def main(path):
                 unzip_file(full_path, root)
 
             if filename.endswith(".gz"):
-                dest_path = full_path[:-3]  # remove .gz
+                dest_path = full_path.rsplit(".gz", 1)[0]  # remove .gz
                 if not os.path.exists(dest_path):
                     ungzip_file(full_path, dest_path)
                 else:
