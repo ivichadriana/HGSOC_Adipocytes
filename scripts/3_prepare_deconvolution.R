@@ -1,23 +1,27 @@
-##########################################################################################
-### 2_prepare_deconvolution.R
-### 
-### This script creates a single-cell/single-nucleus reference matrix for use as input into
-### InstaPrism. It requires single cell RNA sequencing data of HGSOC
-### (from https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE217517) and cell type labels
-### for those cells (from https://github.com/greenelab/deconvolution_pilot/tree/main/data/cell_labels).
-### It also requires single nucleus RNA sequencing data of adipocytes
-### (from http://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE176171). Please refer to the
-### “Input and output data preparation and organization” subsection of README for specific
-### files necessary. It reads in the HGSOC single cell and adipocyte single nucleus RNA
-### sequencing data and performs some pre-processing on the adipocyte data (removing duplicate
-### samples, removing non-adipocyte nuclei, removing samples with many mitochondrial gene
-### reads, and using Seurat to remove low-quality nuclei, empty droplets, and nuclei
-### doublets/multiplets). It then combines the single cell and single nucleus data to
-### generate an expression matrix where each row corresponds to a gene (GeneCards symbols)
-### and each column corresponds to a sample (each assigned a unique numerical ID). It also
-### generates a cell type file which serves as a key, and associates each sample ID to
-### its cell type. 
-##########################################################################################
+# ------------------------------------------------------------------------------
+# Description:
+#   This script processes and integrates scRNA-seq and adipose snRNA-seq datasets
+#   to generate a unified reference gene expression matrix and associated cell
+#   type annotations for downstream analyses.
+#
+# Inputs:
+#   - Raw scRNA-seq matrices, barcodes, features, and labels (GEO: GSE217517)
+#   - Raw adipose snRNA-seq DGE matrices (.tsv files)
+#   - Cell metadata file: "GSE176171_cell_metadata.tsv"
+#
+# Outputs:
+#   - reference_expr_final.csv          : Combined sparse gene expression matrix
+#   - reference_expr_final_genes.csv   : Gene names for the expression matrix
+#   - reference_cell_types_final.csv   : Cell type annotations for all samples
+#
+# Main Steps:
+#   1. Load and validate scRNA-seq reference datasets
+#   2. Filter duplicate cells and combine scRNA-seq matrices
+#   3. Read adipose snRNA-seq data and subset to shared genes
+#   4. Preprocess snRNA-seq data (filtering, QC, and normalization)
+#   5. Integrate scRNA-seq and snRNA-seq data into one matrix
+#   6. Write cleaned, combined datasets to output directory
+# ------------------------------------------------------------------------------
 
 # These are very large files that take up a lot of memory - clear R's memory to make room
 rm(list = ls())

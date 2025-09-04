@@ -1,4 +1,27 @@
-## This runs *inside* env_deconv_R after conda‑env creation
+# ------------------------------------------------------------------------------
+# Description:
+#   Completes R package setup *inside* the conda environment `env_deconv_R`
+#   by installing Bioconductor and GitHub-only packages that are not available
+#   (or pinned) via conda-forge/bioconda. Prefers prebuilt binaries and sets
+#   parallel install options.
+#
+# What it does:
+#   - Ensures BiocManager and remotes are available
+#   - Installs Bioconductor pkgs: GSVA, genefu, impute, SpatialExperiment, amap
+#   - Installs GitHub pkgs: bhklab/consensusOV, humengying0907/InstaPrism
+#   - Prints a success message on completion
+#
+# Inputs:
+#   - None (runs online installs; requires network access)
+#
+# Outputs:
+#   - Packages installed into the active R library of `env_deconv_R`
+#
+# Requirements:
+#   - Activate conda env first: `conda activate env_deconv_R`
+#   - Internet access; R can reach CRAN, Bioconductor, and GitHub
+# ------------------------------------------------------------------------------
+
 options(
   repos = c(CRAN = "https://cloud.r-project.org"),
   Ncpus = parallel::detectCores(),

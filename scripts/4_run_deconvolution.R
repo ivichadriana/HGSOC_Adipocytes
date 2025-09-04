@@ -1,19 +1,38 @@
-##########################################################################################
-### 4_run_deconvolution.R
-### 
-### This script runs InstaPrism, an R package that performs deconvolution with a similar
-### but faster method to BayesPrism. First, it loads in the reference single cell plus
-### single nucleus RNA sequencing reference dataset created in the previous script. Since
-### the reference dataset is so large, it randomly selects 500 of each cell type to use.
-### It then generates and saves two reference objects for input into InstaPrism, one with
-### adipocytes and one without adipocytes. It runs InstaPrism twice on each of the six
-### bulk datasets, both with and without the adipocytes in the reference data. Of note,
-### Instaprism requires non-log-transformed bulk data, so it is performed on the original,
-### non-transformed data for the bulk RNA sequencing datasets and on the 2^(…) transformed
-### data for the microarray datasets.
-##########################################################################################
+# ------------------------------------------------------------------------------
+# Description:
+#   Builds InstaPrism reference objects from the unified sc/sn reference
+#   (produced by 1_get_data.R), then deconvolves bulk expression datasets
+#   twice—(a) including adipocytes and (b) excluding adipocytes—to estimate
+#   cell-type proportions. Reproducibility is enforced via fixed RNG seeds and
+#   parallel-safe RNG settings.
+#
+# Inputs:
+#   - output_data/sc_sn_reference_data/reference_expr_final.csv
+#   - output_data/sc_sn_reference_data/reference_expr_final_genes.csv
+#   - output_data/sc_sn_reference_data/reference_cell_types_final.csv
+#   - input_data/intersect_3ds.csv              # gene symbols to remove (adipocyte run only)
+#   - output_data/bulk_datasets/*_filtered_asImported.csv   # bulk RNA-seq (non-logged)
+#
+# Outputs (written under output_data/instaprism/):
+#   - instaprism_reference_objects/
+#       • instaprism_reference_with_adipos           # phi.cs matrix (CSV)
+#       • instaprism_reference_no_adipos             # phi.cs matrix (CSV)
+#   - instaprism_outputs/
+#       • instaprism_output_<DATASET>_with_adipocytes.csv
+#       • instaprism_output_<DATASET>_no_adipocytes.csv
+#     (each file: samples × cell types; estimated proportions θ)
+#
+# Main Steps:
+#   0) Load libraries; set parallel-safe RNG (L’Ecuyer-CMRG) and register workers
+#   1) Read sc/sn reference matrices & labels; drop intersect_3ds genes (adipocyte run only)
+#   2) Downsample reference to ≤500 cells per cell type (for speed/memory)
+#   3) Build two InstaPrism reference objects: with and without adipocytes
+#   4) Read bulk datasets (e.g., SchildkrautB, SchildkrautW)
+#   5) Run InstaPrism deconvolution for each dataset with both references
+#   6) Save theta (cell-type proportion) matrices to disk
+# ------------------------------------------------------------------------------
 
-# These are large files that take up a lot of memory - clear R's memory to make room
+# Clear R's memory to make room
 rm(list = ls())
 gc()
 
@@ -152,7 +171,7 @@ dataset_list <- c("SchildkrautB", "SchildkrautW")
 # Instaprism requires non-log-transformed bulk data, so it is performed on the original, non-transformed data
 # for the bulk RNA sequencing datasets and on the 2^(…) transformed data for the microarray datasets.
 for (ds in dataset_list){
-  if (ds == "SchildkrautB" | ds == "SchildkrautW" | ds == "TCGA_bulk"){
+  if (ds == "SchildkrautB" | ds == "SchildkrautW"){
     bulk_expr <- fread(file.path(output_data, paste0("bulk_datasets/",ds,"_filtered_asImported.csv")),
           header = TRUE, data.table = FALSE)
   } else {
