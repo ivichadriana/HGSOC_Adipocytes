@@ -73,9 +73,6 @@ instaprism_folder <- file.path(output_data, "instaprism")
 # Ensure instaprism_folder directory exists
 dir.create(instaprism_folder, recursive = TRUE, showWarnings = FALSE)
 
-# Set seed for reproducibility
-set.seed(5)
-
 ##########################################################
 # 0) Genes to remove (for adipocyte reference only)
 ##########################################################
