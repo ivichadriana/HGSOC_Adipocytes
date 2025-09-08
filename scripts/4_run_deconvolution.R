@@ -63,10 +63,7 @@ register(
   MulticoreParam(workers = 4, RNGseed = SEED, progressbar = TRUE)
 )
 ################################################################################
-
-# Be sure to open this script along with a corresponding project
-# that is located in the same directory as the scripts and the 
-# input_data folder and enclosed files.
+# Paths
 output_data <- file.path(here(), "output_data")
 instaprism_folder <- file.path(output_data, "instaprism")
 
@@ -168,18 +165,9 @@ dataset_list <- c("SchildkrautB", "SchildkrautW")
 # Instaprism requires non-log-transformed bulk data, so it is performed on the original, non-transformed data
 # for the bulk RNA sequencing datasets and on the 2^(…) transformed data for the microarray datasets.
 for (ds in dataset_list){
-  if (ds == "SchildkrautB" | ds == "SchildkrautW"){
-    bulk_expr <- fread(file.path(output_data, paste0("bulk_datasets/",ds,"_filtered_asImported.csv")),
-          header = TRUE, data.table = FALSE)
-  } else {
-    bulk_expr <- fread(file.path(output_data, paste0("bulk_datasets/",ds,"_filtered_transformed.csv")),
-                       header = TRUE, data.table = FALSE)
+  bulk_expr <- fread(file.path(output_data, paste0("bulk_datasets/",ds,"_filtered_asImported.csv")),
+        header = TRUE, data.table = FALSE)
   }
-  # Setting column 1 (sample IDs) as the rownames
-  bulk_expr <- data.frame(bulk_expr[,-1], row.names=bulk_expr[,1]) 
-  # Assigning object and transposing so that rows = genes and columns = samples
-  assign(paste0("bulk_expr_",ds), t(bulk_expr)) 
-}
 
 ##########################################################
 # 5) Run InstaPrism twice on each bulk dataset, both with

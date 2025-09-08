@@ -49,7 +49,7 @@ sleep 5
 
 # Run the R‑based deconvolution workflow (each step is idempotent).
 echo "→ Running R deconvolution pipeline"
-# Rscript --vanilla scripts/2_process_data_and_subtypes.R
+Rscript --vanilla scripts/2_process_data_and_subtypes.R
 Rscript --vanilla scripts/3_prepare_deconvolution.R
 Rscript --vanilla scripts/4_run_deconvolution.R
 

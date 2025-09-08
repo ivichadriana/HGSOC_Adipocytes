@@ -42,13 +42,8 @@ library(data.table)
 library(scuttle)
 library(here)
 library(Seurat)
-library(SingleCellExperiment)   # miQC expects an SCE object
-library(miQC)                   # ≥ v1.1.0
 
 # Set base directories
-# Be sure to open this script along with a corresponding project
-# that is located in the same directory as the scripts and the 
-# input_data folder and enclosed files.
 input_data <- file.path(here(), "input_data")
 output_data <- file.path(here(), "output_data")
 reference_data_dir <- file.path(output_data,"sc_sn_reference_data")
@@ -247,9 +242,7 @@ keep      <- !(all_sc_overlap_cells_labeled$cellType %in% unwanted)
 
 all_sc_overlap_cells_labeled <- all_sc_overlap_cells_labeled[keep, ]
 all_sc_expr <- all_sc_expr[, keep]    # drop the same columns in the matrix
-# ────────────────────────────────────────────────────────────────
 
-#using GeneCards symbols for gene names as that is what is used in the adipocyte snRNAseq data
 # Removing the subsetted matrices from R's memory to save space
 rm(rep1_sc_matrix_subset,
    rep2_sc_matrix_subset,
