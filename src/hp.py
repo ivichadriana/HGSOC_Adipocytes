@@ -276,7 +276,6 @@ def get_tissue_dictionary():
         "umbilicus": "Other",
         "left ovary with adherent omentum": "Other",
         "representative section of mesenteric nodule": "Other",
-        "representative section of mesenteric nodule": "Other",
         "representative sections of tumor": "Other",
         "posterior wall of myometrium": "Other",
         "left ovary and peritoneum": "Other",
@@ -288,11 +287,10 @@ def get_tissue_dictionary():
     }
     return tissue_dictionary
 
-
 def p_to_star(p):
     """
     Converts a p-value into a significance star annotation.
-    Returns "" for p < 0.001, "" for p < 0.01, "" for p < 0.05, and an empty string otherwise.
+    Returns "***" for p < 0.001, "**" for p < 0.01, "*" for p < 0.05, and an empty string otherwise.
     Useful for quickly marking statistical significance in results.
     """
     return "***" if p < 0.001 else "**" if p < 0.01 else "*" if p < 0.05 else ""
@@ -457,6 +455,23 @@ def corr_mat_pe(props, title="Pearson correlations"):
 
 
 def open_and_clean_meta(meta_path, renaming, tissue_dictionary):
+
+    """
+    Loads, cleans, and transforms clinical metadata from an Excel file.
+    Parameters
+    ----------
+    meta_path : str
+        Path to the Excel file containing the metadata.
+    renaming : dict
+        Dictionary mapping original column names to new column names.
+    tissue_dictionary : dict
+        Dictionary mapping tissue codes to descriptive tissue names.
+    Returns
+    -------
+    pandas.DataFrame
+        Cleaned and transformed metadata DataFrame with selected columns, standardized types,
+        and mapped tissue names. Unnecessary columns are removed.
+    """
     # ------------------------------ clinical columns -----------------
     meta_full = (
         pd.read_excel(meta_path, sheet_name=0)
@@ -472,16 +487,20 @@ def open_and_clean_meta(meta_path, renaming, tissue_dictionary):
 
     meta_full["Tissue"] = meta_full["Tissue"].map(tissue_dictionary)
 
-    # In no case we'd use Hispanic variable:
-    meta_full.drop(columns=["Hispanic"], inplace=True)
-
-    # We are removing debulking treatment that includes CA125.
-    meta_full.drop(columns=["Debulk", "NeoTx"], inplace=True)
+    # In no case we'd use Hispanic variable, and 
+    # we are removing debulking treatment that includes CA125.
+    meta_full.drop(columns=["Hispanic", "Debulk", "NeoTx"], inplace=True)
 
     return meta_full
 
 
 def plot_km(has_info, missing_info, title, duration_col, event_col):
+
+    '''
+    Plots Kaplan-Meier survival curves comparing two groups: those with treatment information and those missing it.
+    Uses the KaplanMeierFitter to estimate survival probabilities over time.
+    Customizes labels, titles, and axis formatting for clarity and readability.
+    '''
 
     # Initialize Kaplan-Meier fitter
     kmf = KaplanMeierFitter()
