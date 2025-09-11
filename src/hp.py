@@ -1,13 +1,13 @@
-'''
+"""
 The following script has functions used in the notebooks of the repository.
 Functions can be imported with import src.hp as hp (make sure python path includes folder).
-'''
+"""
 
 import gzip
 import os
 import zipfile
 import pandas as pd
-from statsmodels.othermod.betareg import BetaModel    
+from statsmodels.othermod.betareg import BetaModel
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -17,28 +17,36 @@ from lifelines.utils import k_fold_cross_validation
 import statsmodels.api as sm
 from sklearn.model_selection import ParameterGrid
 
+
 def count_decimal_places(x):
-    s = format(x, '.16f').rstrip('0')  # high precision, strip trailing zeros
-    if '.' in s:
-        return len(s.split('.')[1])
+    """
+    Returns the number of decimal places in a given number.
+    It formats the input with high precision, removes trailing zeros,
+    and counts the digits after the decimal point.
+    If the number has no decimal part, it returns 0.
+    """
+    s = format(x, ".16f").rstrip("0")  # high precision, strip trailing zeros
+    if "." in s:
+        return len(s.split(".")[1])
     else:
         return 0
 
+
 def boxplots_by_cutoff(
     df: pd.DataFrame,
-    feature: str,                 # e.g., "BMI" or "Age"
-    threshold: float,             # e.g., 30 or 50
-    macro_cols: list,             # e.g., fractions
+    feature: str,  # e.g., "BMI" or "Age"
+    threshold: float,  # e.g., 30 or 50
+    macro_cols: list,  # e.g., fractions
     *,
-    flag_name: str | None = None, # default: f"{feature}_high"
+    flag_name: str | None = None,  # default: f"{feature}_high"
     ylabel: str = "Proportion",
     palette: str = "Set2",
-    figsize=(6,4),
+    figsize=(6, 4),
     rotate_x=30,
     title: str | None = None,
     legend_title: str | None = None,
     ax=None,
-    add_flag_to_df: bool = False  # set True if you want the 0/1 column added to df
+    add_flag_to_df: bool = False,  # set True if you want the 0/1 column added to df
 ):
     """
     Creates a binary flag (>= threshold), melts macro_cols for tidy plotting, and draws a boxplot.
@@ -72,8 +80,14 @@ def boxplots_by_cutoff(
         created_ax = True
 
     sns.boxplot(
-        data=long, x="Group", y="Prop", hue=flag_name,
-        showcaps=False, fliersize=3, width=0.6, ax=ax
+        data=long,
+        x="Group",
+        y="Prop",
+        hue=flag_name,
+        showcaps=False,
+        fliersize=3,
+        width=0.6,
+        ax=ax,
     )
     ax.set_ylabel(ylabel)
     ax.set_xlabel("")
@@ -86,17 +100,18 @@ def boxplots_by_cutoff(
 
     return long, ax
 
+
 def beta_diagnostics(model, frac_name):
     """
     Diagnostics for a statsmodels.othermod.betareg.BetaResults object.
     """
     # ---- pull residuals, fitted, influence ------------------------------
-    pearson  = model.resid_pearson
-    fitted   = model.fittedvalues
+    pearson = model.resid_pearson
+    fitted = model.fittedvalues
 
-    infl      = model.get_influence()
-    leverage  = infl.hat_matrix_diag          # h_ii
-    cooks_d   = infl.cooks_distance[0]
+    infl = model.get_influence()
+    leverage = infl.hat_matrix_diag  # h_ii
+    cooks_d = infl.cooks_distance[0]
 
     # studentised Pearson residuals
     stud_res = pearson / np.sqrt(1 - leverage)
@@ -114,10 +129,11 @@ def beta_diagnostics(model, frac_name):
     # 2 ─ QQ-plot of studentised residuals --------------------------------
     sm.qqplot(stud_res, line="45", ax=axes[1])
     axes[1].set_title(f"{frac_name}: QQ-plot (studentised res.)")
+    axes[1].set_xlabel("Theoretical Quantiles", weight="bold")
+    axes[1].set_ylabel("Sample Quantiles", weight="bold")
 
     # 3 ─ Leverage vs. residuals with Cook’s D ----------------------------
-    sc = axes[2].scatter(leverage, pearson, c=cooks_d,
-                         cmap="viridis", alpha=0.7)
+    sc = axes[2].scatter(leverage, pearson, c=cooks_d, cmap="viridis", alpha=0.7)
     axes[2].set_xlabel("Leverage", weight="bold")
     axes[2].set_ylabel("Pearson residual", weight="bold")
     axes[2].set_title(f"{frac_name}: Influence")
@@ -126,6 +142,7 @@ def beta_diagnostics(model, frac_name):
 
     plt.tight_layout()
     plt.show()
+
 
 def tune_cox_penalty(
     data: pd.DataFrame,
@@ -167,7 +184,7 @@ def tune_cox_penalty(
     if search_grid is None:
         search_grid = {
             "penalizer": [1e-4, 1e-3, 1e-2, 0.05, 0.1, 0.2, 0.3, 0.5],
-            "l1_ratio":  [0.0],
+            "l1_ratio": [0.0],
         }
 
     successes, failures = [], []
@@ -206,69 +223,99 @@ def tune_cox_penalty(
 
 
 def get_variable_renaming():
-    renaming = {"suid"          : "ID",
-                   "refage"        : "Age",
-                   "vital_status_fin": "Event",
-                   "years_extend"  : "Time_Yrs",
-                    "tissue"  : "Tissue",
-                   "stage"         : "Stage",
-                   "race"          : "Race",
-                   "dblk_treat"    : "Debulk",
-                   "hispanic"      : "Hispanic",
-                   "bmi_recent"    : "BMI",
-                   "neoadj_treat" : "NeoTx",
-                   "adj_treat"     : "AdjTx",
-                   "resdis_treat"  : "Residual"}
+    """
+    Provides a dictionary mapping variable names to more readable labels.
+    Used to rename dataset columns into standardized, human-friendly terms.
+    Returns the renaming dictionary for consistent variable handling.
+    """
+    renaming = {
+        "suid": "ID",
+        "refage": "Age",
+        "vital_status_fin": "Event",
+        "years_extend": "Time_Yrs",
+        "tissue": "Tissue",
+        "stage": "Stage",
+        "race": "Race",
+        "dblk_treat": "Debulk",
+        "hispanic": "Hispanic",
+        "bmi_recent": "BMI",
+        "neoadj_treat": "NeoTx",
+        "adj_treat": "AdjTx",
+        "resdis_treat": "Residual",
+    }
     return renaming
-                   
+
+
 def get_tissue_dictionary():
-    tissue_dictionary = {"right ovary": "Ovary",
-                     "left ovary": "Ovary",
-                     "ovary": "Ovary",
-                      "left ovarian mass": "Ovary",
-                     "right fallopian tube": "Fallopian Tube",
-                     "left fallopian tube": "Fallopian Tube",
-                     "fallopian tube": "Fallopian Tube",
-                     "left fallopian tube and ovary": "Fallopian Tube and Ovary",
-                     "right fallopian tube and ovary": "Fallopian Tube and Ovary",
-                     "right ovary and fallopian tube": "Fallopian Tube and Ovary",
-                     "left ovary and fallopian tube": "Fallopian Tube and Ovary",
-                     "bilateral tubes and ovaries: tumor including possible ovarian tissue": "Fallopian Tube and Ovary",
-                     "tubes and ovaries/cancer": "Fallopian Tube and Ovary",
-                     "fallopian tube and ovary": "Fallopian Tube and Ovary",
-                     "omentum": "Omentum",
-                     "omental tumor": "Omentum",
-                     "omentum (note: ovarian primary)": "Omentum",
-                     "omentum or peritoneum": "Omentum",
-                     "peritoneum or omentum": "Omentum",
-                     "omentum or cul-de-sac implant": "Omentum",
-                     "umbilicus": "Other",
-                     "left ovary with adherent omentum": "Other",
-                     "representative section of mesenteric nodule": "Other",
-                     "representative section of mesenteric nodule": "Other",
-                     "representative sections of tumor":  "Other",
-                     "posterior wall of myometrium": "Other",
-                     "left ovary and peritoneum": "Other",
-                     "omentum or ovary": "Other",
-                     "fallopian tube or ovary": "Other",
-                     "cervix and colon": "Other",
-                     "probable adnexal structure with papillary mass": "Other",
-                     "peritoneum": "Other",
-                    }
+    """
+    Provides a dictionary that standardizes tissue descriptions.
+    Maps various raw tissue labels to consistent categories like Ovary, Fallopian Tube, Omentum, or Other.
+    Helps unify terminology for downstream data analysis or reporting.
+    """
+    tissue_dictionary = {
+        "right ovary": "Ovary",
+        "left ovary": "Ovary",
+        "ovary": "Ovary",
+        "left ovarian mass": "Ovary",
+        "right fallopian tube": "Fallopian Tube",
+        "left fallopian tube": "Fallopian Tube",
+        "fallopian tube": "Fallopian Tube",
+        "left fallopian tube and ovary": "Fallopian Tube and Ovary",
+        "right fallopian tube and ovary": "Fallopian Tube and Ovary",
+        "right ovary and fallopian tube": "Fallopian Tube and Ovary",
+        "left ovary and fallopian tube": "Fallopian Tube and Ovary",
+        "bilateral tubes and ovaries: tumor including possible ovarian tissue": "Fallopian Tube and Ovary",
+        "tubes and ovaries/cancer": "Fallopian Tube and Ovary",
+        "fallopian tube and ovary": "Fallopian Tube and Ovary",
+        "omentum": "Omentum",
+        "omental tumor": "Omentum",
+        "omentum (note: ovarian primary)": "Omentum",
+        "omentum or peritoneum": "Omentum",
+        "peritoneum or omentum": "Omentum",
+        "omentum or cul-de-sac implant": "Omentum",
+        "umbilicus": "Other",
+        "left ovary with adherent omentum": "Other",
+        "representative section of mesenteric nodule": "Other",
+        "representative section of mesenteric nodule": "Other",
+        "representative sections of tumor": "Other",
+        "posterior wall of myometrium": "Other",
+        "left ovary and peritoneum": "Other",
+        "omentum or ovary": "Other",
+        "fallopian tube or ovary": "Other",
+        "cervix and colon": "Other",
+        "probable adnexal structure with papillary mass": "Other",
+        "peritoneum": "Other",
+    }
     return tissue_dictionary
-# continuous covariates to keep “as is”
-cont_cols = ["Age", "BMI"]
+
 
 def p_to_star(p):
+    """
+    Converts a p-value into a significance star annotation.
+    Returns "" for p < 0.001, "" for p < 0.01, "" for p < 0.05, and an empty string otherwise.
+    Useful for quickly marking statistical significance in results.
+    """
     return "***" if p < 0.001 else "**" if p < 0.01 else "*" if p < 0.05 else ""
 
+
 def ungzip_file(gzip_path, dest_path):
-    with gzip.open(gzip_path, 'rb') as f_in, open(dest_path, 'wb') as f_out:
+    """
+    Extracts the contents of a gzip-compressed file to a specified destination path.
+    Opens the gzip file in binary mode, reads its contents, and writes them to the output file.
+    Prints a confirmation message showing the source and destination paths after extraction.
+    """
+    with gzip.open(gzip_path, "rb") as f_in, open(dest_path, "wb") as f_out:
         f_out.write(f_in.read())
     print(f"Extracted gzip: {gzip_path} -> {dest_path}")
 
+
 def unzip_file(zip_path, dest_dir):
-    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+    """
+    Extracts the contents of a zip archive into a destination directory.
+    Iterates through each file in the archive, skipping files that already exist.
+    Prints whether each file was extracted or skipped.
+    """
+    with zipfile.ZipFile(zip_path, "r") as zip_ref:
         for member in zip_ref.namelist():
             target_path = os.path.join(dest_dir, member)
             if not os.path.exists(target_path):
@@ -277,10 +324,15 @@ def unzip_file(zip_path, dest_dir):
             else:
                 print(f"Skipped existing file: {target_path}")
 
-def plot_distributions(props, *,
-                       height=8,           # overall figure height (inch)
-                       aspect=1.4,         # width-to-height ratio
-                       base_font=18, title):      # master font size
+
+def plot_distributions(
+    props,
+    *,
+    height=8,  # overall figure height (inch)
+    aspect=1.4,  # width-to-height ratio
+    base_font=18,
+    title,
+):  # master font size
     """
     Box-plots of all cell-type proportions with large fonts / figure.
 
@@ -298,41 +350,41 @@ def plot_distributions(props, *,
     # ------------------------------------------------------------
     # 1.  Re-shape to long format
     # ------------------------------------------------------------
-    long_props = (
-        props
-        .reset_index(drop=True)
-        .melt(var_name="Cell type", value_name="Proportion")
+    long_props = props.reset_index(drop=True).melt(
+        var_name="Cell type", value_name="Proportion"
     )
 
     # ------------------------------------------------------------
     # 2.  Global font sizes (rcParams)
     # ------------------------------------------------------------
-    plt.rcParams.update({
-        "font.size"       : base_font,
-        "axes.titlesize"  : base_font * 1.2,
-        "axes.labelsize"  : base_font,
-        "xtick.labelsize" : base_font * 0.9,
-        "ytick.labelsize" : base_font * 0.9,
-        "legend.fontsize" : base_font,
-    })
+    plt.rcParams.update(
+        {
+            "font.size": base_font,
+            "axes.titlesize": base_font * 1.2,
+            "axes.labelsize": base_font,
+            "xtick.labelsize": base_font * 0.9,
+            "ytick.labelsize": base_font * 0.9,
+            "legend.fontsize": base_font,
+        }
+    )
 
     # ------------------------------------------------------------
     # 3.  Plot
     # ------------------------------------------------------------
     g = sns.catplot(
-        data      = long_props,
-        x         = "Cell type",
-        y         = "Proportion",
-        kind      = "box",
-        height    = height,
-        aspect    = aspect,
-        showcaps  = False,
-        fliersize = 3,
-        palette   = "Set2"
+        data=long_props,
+        x="Cell type",
+        y="Proportion",
+        kind="box",
+        height=height,
+        aspect=aspect,
+        showcaps=False,
+        fliersize=3,
+        palette="Set2",
     )
     g.set_xticklabels(rotation=45, ha="right")
 
-    g.fig.subplots_adjust(top=0.88)                     # room for title
+    g.fig.subplots_adjust(top=0.88)  # room for title
     g.fig.suptitle(f"Distribution of Proportions: {title}", weight="bold")
 
     plt.show()
@@ -344,41 +396,73 @@ def group_cts(cell_types_to_use_grouped, name, props):
     """
     props[name] = props[cell_types_to_use_grouped].sum(axis=1).copy()
     return props
-    
+
 
 def corr_mat_sp(props, title="Spearman correlations"):
+    """
+    Generates and displays a heatmap of Spearman correlation coefficients for a given dataset.
+    Uses Seaborn to create a color-coded matrix with annotations, ranging from -1 to 1.
+    Includes customizable title, bold formatting, and large font sizes for readability.
+    """
     corr_all = props.corr(method="spearman")
 
-    plt.figure(figsize=(16,13))
-    sns.heatmap(corr_all, cmap="vlag", center=0, square=True,
-                cbar_kws=dict(label="Spearman ρ"), linewidths=.5, annot=True, vmin=-1, vmax=1)
+    plt.figure(figsize=(16, 13))
+    sns.heatmap(
+        corr_all,
+        cmap="vlag",
+        center=0,
+        square=True,
+        cbar_kws=dict(label="Spearman ρ"),
+        linewidths=0.5,
+        annot=True,
+        vmin=-1,
+        vmax=1,
+    )
     plt.title(title, weight="bold", fontsize=36)
     plt.xticks(fontsize=25)
     plt.yticks(fontsize=25)
 
     plt.tight_layout()
     plt.show()
+
 
 def corr_mat_pe(props, title="Pearson correlations"):
+    """
+    Generates and displays a heatmap of Pearson correlation coefficients for a dataset.
+    Adjusts figure size based on the number of variables to improve readability.
+    Uses Seaborn to plot a color-coded, annotated correlation matrix with values from -1 to 1.
+    """
     corr_all = props.corr(method="pearson")
     if props.shape[1] > 4:
-        plt.figure(figsize=(19,16))
+        plt.figure(figsize=(19, 16))
     else:
-        plt.figure(figsize=(16,13))
+        plt.figure(figsize=(16, 13))
 
-    sns.heatmap(corr_all, cmap="vlag", center=0, square=True,
-                cbar_kws=dict(label="Pearson r"), linewidths=.5, annot=True, vmin=-1, vmax=1)
+    sns.heatmap(
+        corr_all,
+        cmap="vlag",
+        center=0,
+        square=True,
+        cbar_kws=dict(label="Pearson r"),
+        linewidths=0.5,
+        annot=True,
+        vmin=-1,
+        vmax=1,
+    )
     plt.title(title, weight="bold", fontsize=36)
     plt.xticks(fontsize=25)
     plt.yticks(fontsize=25)
     plt.tight_layout()
     plt.show()
 
-def open_and_clean_meta(meta_path,  renaming, tissue_dictionary):
+
+def open_and_clean_meta(meta_path, renaming, tissue_dictionary):
     # ------------------------------ clinical columns -----------------
-    meta_full = (pd.read_excel(meta_path, sheet_name=0)
-                .rename(columns=str.strip)
-                .rename(columns=renaming))
+    meta_full = (
+        pd.read_excel(meta_path, sheet_name=0)
+        .rename(columns=str.strip)
+        .rename(columns=renaming)
+    )
 
     meta_full = meta_full[renaming.values()]
 
@@ -390,7 +474,7 @@ def open_and_clean_meta(meta_path,  renaming, tissue_dictionary):
 
     # In no case we'd use Hispanic variable:
     meta_full.drop(columns=["Hispanic"], inplace=True)
-    
+
     # We are removing debulking treatment that includes CA125.
     meta_full.drop(columns=["Debulk", "NeoTx"], inplace=True)
 
@@ -405,11 +489,19 @@ def plot_km(has_info, missing_info, title, duration_col, event_col):
     plt.figure(figsize=(14, 12))
 
     # Plot: patients with treatment info
-    kmf.fit(durations=has_info[duration_col], event_observed=has_info[event_col], label="Treatment Info Present")
+    kmf.fit(
+        durations=has_info[duration_col],
+        event_observed=has_info[event_col],
+        label="Treatment Info Present",
+    )
     kmf.plot_survival_function()
 
     # Plot: patients missing all treatment info
-    kmf.fit(durations=missing_info[duration_col], event_observed=missing_info[event_col], label="All Treatment Info Missing")
+    kmf.fit(
+        durations=missing_info[duration_col],
+        event_observed=missing_info[event_col],
+        label="All Treatment Info Missing",
+    )
     kmf.plot_survival_function()
 
     # Customize plot
@@ -419,7 +511,7 @@ def plot_km(has_info, missing_info, title, duration_col, event_col):
     plt.xlabel("Time (Days)", fontsize=30)
     plt.ylabel("Survival Probability", fontsize=30)
     plt.grid(True)
-    plt.ylim(0,1)
+    plt.ylim(0, 1)
     plt.legend(fontsize=30, markerscale=2)
     plt.tight_layout()
     plt.show()
