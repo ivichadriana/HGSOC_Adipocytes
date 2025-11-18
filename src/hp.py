@@ -11,13 +11,15 @@ from statsmodels.othermod.betareg import BetaModel
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
+from matplotlib.ticker import LogLocator, LogFormatter
+import matplotlib
 from lifelines import KaplanMeierFitter
 from lifelines import CoxPHFitter
 from lifelines.utils import k_fold_cross_validation
 import statsmodels.api as sm
 from sklearn.model_selection import ParameterGrid
 
-def plot_forest_subset(logsumm, variables, title, x_label="log(Hazard Ratio)", xlim=None):
+def plot_forest_subset(logsumm, variables, title, x_label="Hazard ratio (95% CI)", xlim=None):
     """
     logsumm: DataFrame from build_loghr_summary
     variables: list of covariate names to plot
@@ -37,9 +39,9 @@ def plot_forest_subset(logsumm, variables, title, x_label="log(Hazard Ratio)", x
 
     # error bars around log(HR)
     ax.errorbar(
-        x=sub["logHR"],
+        x=sub["HR"],
         y=ypos,
-        xerr=[sub["logHR"] - sub["lower95_log"], sub["upper95_log"] - sub["logHR"]],
+        xerr=[sub["HR"] - sub["lower95"], sub["upper95"] - sub["HR"]],
         fmt="o",
         capsize=10,
         linewidth=4.5,
@@ -47,18 +49,14 @@ def plot_forest_subset(logsumm, variables, title, x_label="log(Hazard Ratio)", x
         capthick=4.5,
         markersize=12,
     )
-
-    # reference at log(HR)=0 (i.e., HR=1)
-    ax.axvline(0, ls="--", lw=1)
-
     # star p-values (same thresholds as your code)
     for i, p in enumerate(sub["p"]):
         if p < 0.05:
-            ax.text(sub["upper95_log"].iloc[i] + 0.01, ypos[i], "*",  va="center", fontsize=50, color="red")
+            ax.text(sub["upper95"].iloc[i] + 0.01, ypos[i], "*",  va="center", fontsize=50, color="red")
         if p < 0.005:
-            ax.text(sub["upper95_log"].iloc[i] + 0.01, ypos[i], "**", va="center", fontsize=50, color="red")
+            ax.text(sub["upper95"].iloc[i] + 0.01, ypos[i], "**", va="center", fontsize=50, color="red")
         if p < 0.0005:
-            ax.text(sub["upper95_log"].iloc[i] + 0.01, ypos[i], "***",va="center", fontsize=50, color="red")
+            ax.text(sub["upper95"].iloc[i] + 0.01, ypos[i], "***",va="center", fontsize=50, color="red")
 
     # tiny y padding
     padding = 0.35
@@ -66,8 +64,17 @@ def plot_forest_subset(logsumm, variables, title, x_label="log(Hazard Ratio)", x
     if xlim:
         ax.set_xlim(xlim)
     ax.set_yticks(ypos)
+    ax.set_xscale("log")
     ax.set_yticklabels(sub.index, fontsize=35)
-    plt.xticks(fontsize=25)
+
+    # Major ticks at 1–2–5 per decade
+    ax.xaxis.set_major_locator(LogLocator(base=10, subs=(1.0, 2.0, 5.0)))
+    # Label all major ticks, not just powers of 10
+    ax.xaxis.set_major_formatter(LogFormatter(base=10, labelOnlyBase=False))
+    ax.xaxis.set_minor_locator(LogLocator(base=10, subs=tuple(range(1,10))))
+    ax.xaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
+    ax.tick_params(axis='x', which='major', labelsize=25)
+    ax.axvline(1, ls="--", lw=1)
     ax.set_ylabel("", fontsize=35)
     ax.set_xlabel(x_label, fontsize=35, fontweight="bold")
     ax.set_title(title, fontsize=45, fontweight="bold", y=1.05, x=0.4)
@@ -655,7 +662,7 @@ def plot_km(has_info, missing_info, title, duration_col, event_col):
     kmf.fit(
         durations=has_info[duration_col],
         event_observed=has_info[event_col],
-        label="Treatment Info Present",
+        label="Treatment Data Present",
     )
     kmf.plot_survival_function()
 
@@ -663,7 +670,7 @@ def plot_km(has_info, missing_info, title, duration_col, event_col):
     kmf.fit(
         durations=missing_info[duration_col],
         event_observed=missing_info[event_col],
-        label="All Treatment Info Missing",
+        label="Treatment Data Missing",
     )
     kmf.plot_survival_function()
 
