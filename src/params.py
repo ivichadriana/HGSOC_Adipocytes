@@ -12,4 +12,4 @@ cont_cols = ["Age", "BMI"]
 custom_colors = ["green", "#FFD700", "darkorange", "red"]
 colors = ["peachpuff", "orange", "tomato", "salmon"]
 levels = subtype_order
-no_adj_samples= [130131, 130138, 161063, 161090, 170110, 190001, 190010]
+no_adj_samples = [130131, 130138, 161063, 161090, 170110, 190001, 190010]
