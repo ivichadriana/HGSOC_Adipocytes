@@ -139,7 +139,7 @@ def build_loghr_summary(cph_model, desired_order=None):
     out["logHR"] = summ["coef"]
     out["lower95_log"] = summ[ci_lower_col]
     out["upper95_log"] = summ[ci_upper_col]
-    # lifelines uses 'p' or 'p' already—fall back to 'p' if needed
+    # lifelines may use 'p' or another column name for p-values—fall back to any column whose lowercase name is 'p' if needed
     pcol = (
         "p" if "p" in summ.columns else [c for c in summ.columns if c.lower() == "p"][0]
     )
