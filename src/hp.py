@@ -152,7 +152,7 @@ def meta_summary_table(df):
 
     # Race
     for cat, val in df["Race"].value_counts(dropna=False).items():
-        label = f"Race = {cat}" if not pd.isna(cat) else "Race = Unknown"
+        label = f"Race = {cat if not pd.isna(cat) else 'Unknown'}"
         rows.append(["Race", label, val])
 
     # Age
