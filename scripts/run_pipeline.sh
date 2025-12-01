@@ -76,13 +76,15 @@ NOTEBOOKS=(
   analysis_proportions_visualizations
   analysis_proportions_vs_bmi_and_age
   analysis_proportions_vs_race
+  analysis_proportions_vs_tissue
   analysis_proportions_vs_residual
   analysis_proportions_vs_stage
   analysis_proportions_vs_subtype
+  analysis_kaplan_meiers
   analysis_proportions_vs_subtype_and_race
   analysis_proportions_vs_survival
-  analysis_proportions_vs_survival_and_race
-  analysis_proportions_vs_tissue
+  analysis_proportions_vs_survival_separate_race
+  analysis_proportions_vs_survival_allcelltypes
 )
 
 # Iterate over notebooks and execute each with Papermill, saving *_RUN.ipynb.

@@ -11,11 +11,225 @@ from statsmodels.othermod.betareg import BetaModel
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
+from matplotlib.ticker import LogLocator, LogFormatter
+import matplotlib
 from lifelines import KaplanMeierFitter
 from lifelines import CoxPHFitter
 from lifelines.utils import k_fold_cross_validation
 import statsmodels.api as sm
 from sklearn.model_selection import ParameterGrid
+
+
+def plot_forest_subset(
+    logsumm, variables, title, x_label="Hazard ratio (95% CI)", xlim=None
+):
+    """
+    logsumm: DataFrame from build_loghr_summary
+    variables: list of covariate names to plot
+    title: plot title
+    """
+    # subset in the provided order, keep only those that exist
+    variables = [v for v in variables if v in logsumm.index]
+    if len(variables) == 0:
+        print(f"(No variables to plot for: {title})")
+        return
+
+    sub = logsumm.loc[variables].copy()
+    ypos = np.arange(len(sub))
+
+    sns.set_style("ticks", {"xtick.major.size": 5, "ytick.major.size": 5})
+    fig, ax = plt.subplots(figsize=(15, 1.5 * len(sub)))
+
+    # error bars around log(HR)
+    ax.errorbar(
+        x=sub["HR"],
+        y=ypos,
+        xerr=[sub["HR"] - sub["lower95"], sub["upper95"] - sub["HR"]],
+        fmt="o",
+        capsize=10,
+        linewidth=4.5,
+        elinewidth=4.5,
+        capthick=4.5,
+        markersize=12,
+    )
+    # star p-values (same thresholds as your code)
+    for i, p in enumerate(sub["p"]):
+        if p < 0.05:
+            ax.text(
+                sub["upper95"].iloc[i] + 0.01,
+                ypos[i],
+                "*",
+                va="center",
+                fontsize=50,
+                color="red",
+            )
+        if p < 0.005:
+            ax.text(
+                sub["upper95"].iloc[i] + 0.01,
+                ypos[i],
+                "**",
+                va="center",
+                fontsize=50,
+                color="red",
+            )
+        if p < 0.0005:
+            ax.text(
+                sub["upper95"].iloc[i] + 0.01,
+                ypos[i],
+                "***",
+                va="center",
+                fontsize=50,
+                color="red",
+            )
+
+    # tiny y padding
+    padding = 0.35
+    ax.set_ylim(-padding, len(sub) - 1 + padding)
+    if xlim:
+        ax.set_xlim(xlim)
+    ax.set_yticks(ypos)
+    ax.set_xscale("log")
+    ax.set_yticklabels(sub.index, fontsize=35)
+
+    # Major ticks at 1–2–5 per decade
+    ax.xaxis.set_major_locator(LogLocator(base=10, subs=(1.0, 2.0, 5.0)))
+    # Label all major ticks, not just powers of 10
+    ax.xaxis.set_major_formatter(LogFormatter(base=10, labelOnlyBase=False))
+    ax.xaxis.set_minor_locator(LogLocator(base=10, subs=tuple(range(1, 10))))
+    ax.xaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
+    ax.tick_params(axis="x", which="major", labelsize=25)
+    ax.axvline(1, ls="--", lw=1)
+    ax.set_ylabel("", fontsize=35)
+    ax.set_xlabel(x_label, fontsize=35, fontweight="bold")
+    ax.set_title(title, fontsize=45, fontweight="bold", y=1.05, x=0.4)
+    ax.invert_yaxis()
+    plt.tight_layout()
+    plt.show()
+
+
+def build_loghr_summary(cph_model, desired_order=None):
+    """
+    Returns a summary DataFrame with:
+      index = covariate names
+      columns = ['logHR', 'lower95_log', 'upper95_log', 'p']
+    using the model's coefficient (log HR) and its CI.
+    """
+    summ = cph_model.summary.copy()
+
+    # optional ordering if provided
+    if desired_order is not None:
+        keep = [v for v in desired_order if v in summ.index]
+        # include anything not in desired_order at the end
+        keep += [v for v in summ.index if v not in keep]
+        summ = summ.loc[keep]
+
+    # find CI columns robustly (lifelines changes names across versions)
+    ci_lower_col = [
+        c
+        for c in summ.columns
+        if c.startswith("coef lower") or c.startswith("lower 95%")
+    ][0]
+    ci_upper_col = [
+        c
+        for c in summ.columns
+        if c.startswith("coef upper") or c.startswith("upper 95%")
+    ][0]
+
+    out = pd.DataFrame(index=summ.index)
+    out["logHR"] = summ["coef"]
+    out["lower95_log"] = summ[ci_lower_col]
+    out["upper95_log"] = summ[ci_upper_col]
+    # lifelines may use 'p' or another column name for p-values—fall back to any column whose lowercase name is 'p' if needed
+    pcol = (
+        "p" if "p" in summ.columns else [c for c in summ.columns if c.lower() == "p"][0]
+    )
+    out["p"] = summ[pcol]
+    return out
+
+
+def meta_summary_table(df):
+    rows = []
+
+    # Race
+    for cat, val in df["Race"].value_counts(dropna=False).items():
+        label = f"Race = {cat if not pd.isna(cat) else 'Unknown'}"
+        rows.append(["Race", label, val])
+
+    # Age
+    rows.extend(
+        [
+            ["Age at Diagnosis", "N", df["Age"].count()],
+            ["Age at Diagnosis", "Mean", round(df["Age"].mean(), 2)],
+            ["Age at Diagnosis", "Std", round(df["Age"].std(), 2)],
+            ["Age at Diagnosis", "Min", df["Age"].min()],
+            ["Age at Diagnosis", "Max", df["Age"].max()],
+        ]
+    )
+
+    # Vital Status
+    vital_counts = df["Event"].map({1: "Deceased", 0: "Alive/Censored"}).value_counts()
+    for cat, val in vital_counts.items():
+        rows.append(["Vital Status", cat, val])
+
+    # Survival Time
+    rows.extend(
+        [
+            ["Years from diagnosis to last follow up", "N", df["Time_Yrs"].count()],
+            [
+                "Years from diagnosis to last follow up",
+                "Mean",
+                round(df["Time_Yrs"].mean(), 2),
+            ],
+            [
+                "Years from diagnosis to last follow up",
+                "Std",
+                round(df["Time_Yrs"].std(), 2),
+            ],
+            [
+                "Years from diagnosis to last follow up",
+                "Min",
+                round(df["Time_Yrs"].min(), 2),
+            ],
+            [
+                "Years from diagnosis to last follow up",
+                "Max",
+                round(df["Time_Yrs"].max(), 2),
+            ],
+        ]
+    )
+
+    # FIGO Stage
+    for cat, val in df["Stage"].value_counts(dropna=False).items():
+        label = f"Stage {cat}" if not pd.isna(cat) else "Stage Unknown"
+        rows.append(["FIGO Stage", label, val])
+
+    # BMI
+    rows.extend(
+        [
+            ["BMI", "N", df["BMI"].count()],
+            ["BMI", "Mean", round(df["BMI"].mean(), 2)],
+            ["BMI", "Std", round(df["BMI"].std(), 2)],
+            ["BMI", "Min", round(df["BMI"].min(), 2)],
+            ["BMI", "Max", round(df["BMI"].max(), 2)],
+            ["BMI", "Unknown", df["BMI"].isna().sum()],
+        ]
+    )
+
+    # Residual Disease
+    for cat, val in df["Residual"].value_counts(dropna=False).items():
+        label = f"Residual {cat}" if not pd.isna(cat) else "Residual Unknown"
+        rows.append(["Residual Status", label, val])
+
+    # Adjuvant Therapy
+    for cat, val in df["AdjTx"].value_counts(dropna=False).items():
+        label = f"Adjuvant {cat}" if not pd.isna(cat) else "Adjuvant Unknown"
+        rows.append(["Adjuvant Status", label, val])
+
+    # Build DataFrame
+    summary_df = pd.DataFrame(
+        rows, columns=["Clinical Variable", "Category/Statistic", "Value"]
+    )
+    return summary_df
 
 
 def count_decimal_places(x):
@@ -287,6 +501,7 @@ def get_tissue_dictionary():
     }
     return tissue_dictionary
 
+
 def p_to_star(p):
     """
     Converts a p-value into a significance star annotation.
@@ -326,7 +541,7 @@ def unzip_file(zip_path, dest_dir):
 def plot_distributions(
     props,
     *,
-    height=8,  # overall figure height (inch)
+    height=10,  # overall figure height (inch)
     aspect=1.4,  # width-to-height ratio
     base_font=18,
     title,
@@ -358,11 +573,10 @@ def plot_distributions(
     plt.rcParams.update(
         {
             "font.size": base_font,
-            "axes.titlesize": base_font * 1.2,
-            "axes.labelsize": base_font,
-            "xtick.labelsize": base_font * 0.9,
-            "ytick.labelsize": base_font * 0.9,
-            "legend.fontsize": base_font,
+            "axes.labelsize": base_font * 2,
+            "xtick.labelsize": base_font * 2,
+            "ytick.labelsize": base_font * 2,
+            "legend.fontsize": base_font * 2,
         }
     )
 
@@ -376,14 +590,16 @@ def plot_distributions(
         kind="box",
         height=height,
         aspect=aspect,
-        showcaps=False,
-        fliersize=3,
+        showcaps=True,
+        fliersize=4,
         palette="Set2",
     )
     g.set_xticklabels(rotation=45, ha="right")
 
     g.fig.subplots_adjust(top=0.88)  # room for title
-    g.fig.suptitle(f"Distribution of Proportions: {title}", weight="bold")
+    g.fig.suptitle(
+        f"Distribution of Proportions: {title}", weight="bold", fontsize=base_font * 2.5
+    )
 
     plt.show()
 
@@ -455,7 +671,6 @@ def corr_mat_pe(props, title="Pearson correlations"):
 
 
 def open_and_clean_meta(meta_path, renaming, tissue_dictionary):
-
     """
     Loads, cleans, and transforms clinical metadata from an Excel file.
     Parameters
@@ -487,7 +702,7 @@ def open_and_clean_meta(meta_path, renaming, tissue_dictionary):
 
     meta_full["Tissue"] = meta_full["Tissue"].map(tissue_dictionary)
 
-    # In no case we'd use Hispanic variable, and 
+    # In no case we'd use Hispanic variable, and
     # we are removing debulking treatment that includes CA125.
     meta_full.drop(columns=["Hispanic", "Debulk", "NeoTx"], inplace=True)
 
@@ -495,12 +710,11 @@ def open_and_clean_meta(meta_path, renaming, tissue_dictionary):
 
 
 def plot_km(has_info, missing_info, title, duration_col, event_col):
-
-    '''
+    """
     Plots Kaplan-Meier survival curves comparing two groups: those with treatment information and those missing it.
     Uses the KaplanMeierFitter to estimate survival probabilities over time.
     Customizes labels, titles, and axis formatting for clarity and readability.
-    '''
+    """
 
     # Initialize Kaplan-Meier fitter
     kmf = KaplanMeierFitter()
@@ -511,7 +725,7 @@ def plot_km(has_info, missing_info, title, duration_col, event_col):
     kmf.fit(
         durations=has_info[duration_col],
         event_observed=has_info[event_col],
-        label="Treatment Info Present",
+        label="Treatment Data Present",
     )
     kmf.plot_survival_function()
 
@@ -519,7 +733,7 @@ def plot_km(has_info, missing_info, title, duration_col, event_col):
     kmf.fit(
         durations=missing_info[duration_col],
         event_observed=missing_info[event_col],
-        label="All Treatment Info Missing",
+        label="Treatment Data Missing",
     )
     kmf.plot_survival_function()
 

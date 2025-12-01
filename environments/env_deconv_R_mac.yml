@@ -1,0 +1,32 @@
+name: env_deconv_R
+# --------------------------------------------------------------------------
+# IMPORTANT:  ▸ no “libgfortran‑devel_osx‑arm64”     (ISO_Fortran_binding.h)
+#             ▸ no “xorg‑libx11”                     (Xlib.h, Xutil.h, …)
+#             ▸ strict channel priority to stop the
+#               solver from pulling those packages in by accident
+# --------------------------------------------------------------------------
+channels:
+  - conda-forge
+  - bioconda
+  - defaults        # always last
+
+dependencies:
+  # ───── Core runtime ─────
+  - r-base=4.4.1           
+  - r-argparse              # tiny helper pulled by Seurat
+  - tk                      # R’s tcltk needs it; *do not* add xorg‑libx11
+  # ───── CRAN packages available as binaries ─────
+  - r-data.table
+  - r-dplyr
+  - r-here
+  - r-matrix
+  - r-seurat
+  # ───── Bioconductor binaries ─────
+  - bioconductor-singlecellexperiment
+  - bioconductor-scuttle
+  - bioconductor-miqc
+  # ───── Compilers / build‑tools ─────
+  - clang                # C / C++
+  - gfortran_impl_osx-arm64   # provides the Fortran compiler *and* runtime
+  # ( because we include **gfortran_impl** the solver will not pull
+  #   the conflicting **libgfortran‑devel_osx‑arm64** package )

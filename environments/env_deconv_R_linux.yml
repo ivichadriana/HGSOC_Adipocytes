@@ -1,0 +1,50 @@
+name: env_deconv_R
+channels:
+  - conda-forge
+  - bioconda
+  - defaults   # always last
+
+dependencies:
+  # ───── Core runtime ─────
+  - r-base=4.4.1
+  - r-argparse          # tiny helper pulled by Seurat
+  - tk                  # R's tcltk; on Linux it may bring in X11 libs
+
+  # ───── CRAN packages available as binaries ─────
+  - r-data.table
+  - r-dplyr
+  - r-here
+  - r-matrix
+  - r-seurat
+
+  # ───── Bioconductor binaries ─────
+  - bioconductor-singlecellexperiment
+  - bioconductor-scuttle
+  - bioconductor-miqc
+
+  # ───── Compilers / build-tools (Linux) ─────
+  # Using the meta-package "compilers" brings gcc, g++, and gfortran for linux-64
+  - compilers
+  - make
+  - pkg-config
+
+  # ───── Common system libs often needed by R packages on Linux ─────
+  # (safe to keep; helps avoid source builds failing)
+  - libxml2
+  - libcurl
+  - zlib
+  - bzip2
+  - xz
+  - openssl
+  - libpng
+  - freetype
+  - fontconfig
+  - cairo
+  - pango
+
+  # ───── X11 libraries (generally fine on Linux; remove if truly headless) ─────
+  - xorg-libx11
+  - xorg-libxt
+  - xorg-libxrender
+  - xorg-libxau
+  - xorg-libxdmcp
