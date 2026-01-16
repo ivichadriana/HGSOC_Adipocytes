@@ -174,26 +174,26 @@ def meta_summary_table(df):
     # Survival Time
     rows.extend(
         [
-            ["Years from diagnosis to last follow up", "N", df["Time_Yrs"].count()],
+            ["Years from diagnosis to last follow up", "N", df["Time-Years"].count()],
             [
                 "Years from diagnosis to last follow up",
                 "Mean",
-                round(df["Time_Yrs"].mean(), 2),
+                round(df["Time-Years"].mean(), 2),
             ],
             [
                 "Years from diagnosis to last follow up",
                 "Std",
-                round(df["Time_Yrs"].std(), 2),
+                round(df["Time-Years"].std(), 2),
             ],
             [
                 "Years from diagnosis to last follow up",
                 "Min",
-                round(df["Time_Yrs"].min(), 2),
+                round(df["Time-Years"].min(), 2),
             ],
             [
                 "Years from diagnosis to last follow up",
                 "Max",
-                round(df["Time_Yrs"].max(), 2),
+                round(df["Time-Years"].max(), 2),
             ],
         ]
     )
