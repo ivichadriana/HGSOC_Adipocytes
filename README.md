@@ -60,7 +60,7 @@ and the visualizations and analysis are saved in the notebooks/ folder.
 - **SchildkrautB** (Black patients; clinical metadata & raw counts)
 - **SchildkrautW** (White patients; clinical metadata & raw counts)
 
-> Available upon request. Please email [casey.greene@cuanschutz.edu](mailto\:casey.greene@cuanschutz.edu) for access.
+> Available upon request. Please email [casey.greene@cuanschutz.edu](mailto\:casey.greene@cuanschutz.edu) for access to this data.
 
 ### Reference gene lists & clustering metadata
 
